@@ -2,10 +2,15 @@ package ussd
 
 import (
 	"context"
+	"regexp"
 
 	"bitbucket.org/vservices/utils/errors"
 	"github.com/google/uuid"
 )
+
+func init() {
+	registerItemDef("set", SetDef{})
+}
 
 type SetDef struct {
 	Name  string      `json:"name"`
@@ -16,19 +21,25 @@ func (def SetDef) Validate() error {
 	if def.Name == "" {
 		return errors.Errorf("missing name")
 	}
+	if !snakeCaseRegex.MatchString(def.Name) {
+		return errors.Errorf("name:\"%s\" is not written in snake_case", def.Name)
+	}
+	if def.Name[0] == '_' {
+		return errors.Errorf("name:\"%s\" may not start with '_'", def.Name) //reserved for dynamic items
+	}
+	//value may be practically anything, even nil to delete session data, so not validated
 	return nil
 }
 
-func DynSet(s Session, name string, value interface{}) Item {
+//creates a dynamic item in the session
+func (def SetDef) Item(s Session) Item {
 	if s == nil {
 		panic("session is nil")
 	}
-	def := SetDef{Name: name, Value: value}
 	if err := def.Validate(); err != nil {
-		log.Errorf("invalid set def %+v: %+v", def, err)
-		return DynFinal(s, "Service unavailable") //still return an item so the call is easy to use
+		log.Errorf("invalid def (%T)%+v: %+v", def, def, err)
+		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.Item(s) //still return an item so the call is easy to use
 	}
-
 	//store as new item in the session with uuid
 	id := "_item_set_" + uuid.New().String()
 	s.Set(id, def)
@@ -36,10 +47,10 @@ func DynSet(s Session, name string, value interface{}) Item {
 	//return set that can be used locally, but it will be recreated
 	//later from session data if control is first passed back to the user
 	return ussdSet{id: id, def: def}
-}
+} //SetDef.Item()
 
-//static set item
-func Set(name string, value interface{}) Item {
+//define a static set(name=value) item
+func Set(id string, name string, value interface{}) Item {
 	if started {
 		panic(errors.Errorf("attempt to define static item Set(%s=%v) after started", name, value))
 	}
@@ -47,23 +58,13 @@ func Set(name string, value interface{}) Item {
 	if err := def.Validate(); err != nil {
 		panic(errors.Wrapf(err, "invalid set def %+v: %+v", def))
 	}
-
-	id := uuid.New().String()
-	// if existingItem, ok := ItemByID(id); ok {
-	// 	existingSetItem, ok := existingItem.(ussdSet)
-	// 	if !ok {
-	// 		panic(errors.Errorf("Set(%s) redefines existing item(%s) with type %T", id, id, existingSetItem))
-	// 	}
-	// 	if existingSetItem.def.Name != def.Name {
-	// 		panic(errors.Errorf("Set(%s).name=\"%s\" redefines a different name Set(%s).name=\"%s\"", id, def.Name, id, existingSetItem.def.Name))
-	// 	}
-	// 	if existingSetItem.def.Value != def.Value {
-	// 		panic(errors.Errorf("Set(%s).%s=(%T)%v redefines a different value Set(%s).%s=(%T)%v", id, def.Name, def.Value, def.Value, id, existingSetItem.def.Name, existingSetItem.def.Value, existingSetItem.def.Value))
-	// 	}
-	// 	return existingSetItem //ok to reuse
-	// }
-
-	//create a new set item
+	if id == "" {
+		id = uuid.New().String()
+	} else {
+		if existingItem, ok := itemByID[id]; ok {
+			panic(errors.Errorf("Set(%s) redefines %T(%s)", id, existingItem, id))
+		}
+	}
 	s := ussdSet{
 		id:  id,
 		def: def,
@@ -86,3 +87,7 @@ func (set ussdSet) Exec(ctx context.Context) ([]Item, error) {
 	s.Set(set.def.Name, set.def.Value)
 	return nil, nil
 }
+
+const snakeCasePattern = `[a-z]([a-z0-9_]*[a-z0-9])*`
+
+var snakeCaseRegex = regexp.MustCompile("^" + snakeCasePattern + "$")

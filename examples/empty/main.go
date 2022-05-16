@@ -39,10 +39,10 @@ func main() {
 	funcSosCreditAUnAmi := ussd.Func("exec_sos_credit_a_un_ami", execSosCreditAUnAmi)
 
 	//SOS Credit a TELMA:
-	menuSelectAmount := ussd.Menu("select_amount", "Montant:").
-		With("200", ussd.Set("amount", "200")).
-		With("500", ussd.Set("amount", "500")).
-		With("1000", ussd.Set("amount", "1000"))
+	menuSelectAmount := ussd.Menu("select_amount", ussd.CaptionDef{"fr": "Montant:"}).
+		With(ussd.CaptionDef{"fr": "200"}, ussd.Set("", "amount", "200")).
+		With(ussd.CaptionDef{"fr": "500"}, ussd.Set("", "amount", "500")).
+		With(ussd.CaptionDef{"fr": "1000"}, ussd.Set("", "amount", "1000"))
 		//With("back")	//todo: back must clear/replace []nextItems
 	funcSosCreditATelma := ussd.Func("exec_sos_credit_a_telma", execSosCreditATelma)
 
@@ -51,15 +51,15 @@ func main() {
 	ussd.Func("exec_sos_apply_offer", execSosApplyOffer)
 
 	//temp item used for all menu items not yet implemented
-	nyi := ussd.Final("nyi", "Not yet implemented")
+	nyi := ussd.Final("nyi", ussd.CaptionDef{"fr": "Not yet implemented"})
 
 	svc := ussd.NewService( //todo: ensure we got msisdn, needed to send SMS...
-		ussd.Menu("sos_credit_menu", "SOS Crédit").
-			With("SOS credit a un ami", promptDestNr, promptAmount, funcSosCreditAUnAmi).
-			With("SOS credit a TELMA", menuSelectAmount, funcSosCreditATelma).
-			With("SOS offre a TELMA", ussd.Func("get_offers", execSosGetOffers)).
-			With("Rembourser SOS", nyi).
-			With("Aide", nyi))
+		ussd.Menu("sos_credit_menu", ussd.CaptionDef{"fr": "SOS Crédit"}).
+			With(ussd.CaptionDef{"fr": "SOS credit a un ami"}, promptDestNr, promptAmount, funcSosCreditAUnAmi).
+			With(ussd.CaptionDef{"fr": "SOS credit a TELMA"}, menuSelectAmount, funcSosCreditATelma).
+			With(ussd.CaptionDef{"fr": "SOS offre a TELMA"}, ussd.Func("get_offers", execSosGetOffers)).
+			With(ussd.CaptionDef{"fr": "Rembourser SOS"}, nyi).
+			With(ussd.CaptionDef{"fr": "Aide"}, nyi))
 	if err := svc.Run(); err != nil {
 		panic(errors.Errorf("failed to run: %+v", err))
 	}
@@ -77,9 +77,15 @@ func execSosCreditAUnAmi(ctx context.Context) ([]ussd.Item, error) {
 		destNr,
 		fmt.Sprintf("Please send me credit of %s!!!", amount),
 	); err != nil {
-		return nil, errors.Errorf("failed to send SMS to " + s.Get("dest_nr").(string))
+		return nil, errors.Errorf("failed to send SMS to " + destNr)
 	}
-	return []ussd.Item{ussd.DynFinal(s, fmt.Sprintf("Request for %s sent to %s", amount, destNr))}, nil
+	return []ussd.Item{
+		ussd.FinalDef{
+			Caption: ussd.CaptionDef{
+				"fr": fmt.Sprintf("Request for %s sent to %s", amount, destNr),
+			},
+		}.Item(s),
+	}, nil
 }
 
 func execSosCreditATelma(ctx context.Context) ([]ussd.Item, error) {
@@ -87,7 +93,13 @@ func execSosCreditATelma(ctx context.Context) ([]ussd.Item, error) {
 	//msisdn, _ := s.Get("msisdn").(string)
 	amount, _ := s.Get("amount").(string)
 	//todo: make service call to see if qualify and recharge account
-	return []ussd.Item{ussd.DynFinal(s, fmt.Sprintf("Telma recharged your account with %s credit.", amount))}, nil
+	return []ussd.Item{
+		ussd.FinalDef{
+			Caption: ussd.CaptionDef{
+				"fr": fmt.Sprintf("Telma recharged your account with %s credit.", amount),
+			},
+		}.Item(s),
+	}, nil
 }
 
 func execSosGetOffers(ctx context.Context) ([]ussd.Item, error) {
@@ -107,13 +119,22 @@ func execSosGetOffers(ctx context.Context) ([]ussd.Item, error) {
 
 	//if no offers - say sorry
 	if len(offers) < 1 {
-		return []ussd.Item{ussd.DynFinal(s, "Sorry, no offers available at present.")}, nil
+		return []ussd.Item{
+			ussd.FinalDef{
+				Caption: ussd.CaptionDef{
+					"fr": "Sorry, no offers available at present.",
+				},
+			}.Item(s),
+		}, nil
 	}
 
 	//there are offers, present them as a menu then apply the selection
-	def := ussd.DynMenuDef("Offers for You")
+	def := ussd.DynMenuDef(ussd.CaptionDef{"fr": "Offers for You"})
 	for _, o := range offers {
-		def = def.With(o.Amount, ussd.DynSet(s, "amount", o.Amount))
+		def = def.With(
+			ussd.CaptionDef{"fr": o.Amount},
+			ussd.SetDef{Name: "amount", Value: o.Amount}.Item(s),
+		)
 	}
 	exec, _ := ussd.ItemByID("exec_sos_apply_offer", s)
 	return []ussd.Item{def.Item(s), exec}, nil
@@ -124,7 +145,13 @@ func execSosApplyOffer(ctx context.Context) ([]ussd.Item, error) {
 	//msisdn, _ := s.Get("msisdn").(string)
 	amount, _ := s.Get("amount").(string)
 	//todo: make service call to see if qualify and recharge account
-	return []ussd.Item{ussd.DynFinal(s, fmt.Sprintf("Telma recharged your account with %s credit.", amount))}, nil
+	return []ussd.Item{
+		ussd.FinalDef{
+			Caption: ussd.CaptionDef{
+				"fr": fmt.Sprintf("Telma recharged your account with %s credit.", amount),
+			},
+		}.Item(s),
+	}, nil
 }
 
 func sendSms(from, to, text string) error {

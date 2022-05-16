@@ -1,6 +1,8 @@
 package ussd
 
-import "context"
+import (
+	"context"
+)
 
 //Item is any type of USSD service processing step
 type Item interface {
@@ -45,11 +47,6 @@ var (
 	itemByID = map[string]Item{}
 	started  = false
 )
-
-//ItemDef is an item definition that can be loaded from file or session data to create an item
-type ItemDef interface {
-	Item(s Session) Item
-}
 
 func ItemByID(id string, s Session) (Item, bool) {
 	//see if static item:

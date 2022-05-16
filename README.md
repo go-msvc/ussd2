@@ -3,10 +3,17 @@
     - runs on console/nats/rest
     - only first menu item
 # TODO #
-- Busy preventing item definition at run-time, and add dyn items to session...
-	see Set and Final and later still have to do dyn prompt and menu...
+- Busy preventing item definition at run-time, and add dyn items to sessions...
+	see Set and Final and Menu, still have to do prompt
+	Need to register tyd definitions so they can load from file
+	And need to make func Xxx() take session always so that when load from file,
+	  s == nil and it implies static, but when used at runtime, implies dynamic
+	  and make it a session function if possible so that cannot be called without...
+	  may be session.Set() and session.Menu().With()....Item() and session.Prompt() etc
 
 - Do input validation and retry prompt
+- Do Set with expressions
+- Text with translation and substitution
 - Custom value types in sessions with validation built in and params e.g. min/max per prompt?
 - Check error handling - what goes to user and what is logged
 - Make service calls on NATS/HTTP/Mongo/SQL/...

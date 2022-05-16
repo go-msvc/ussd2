@@ -6,6 +6,35 @@ import (
 	"bitbucket.org/vservices/utils/errors"
 )
 
+func init() {
+	registerItemDef("prompt", PromptDef{})
+}
+
+type PromptDef struct {
+	Caption CaptionDef `json:"caption"`
+	Name    string     `json:"name"`
+}
+
+func (def PromptDef) Validate() error {
+	if err := def.Caption.Validate(); err != nil {
+		return errors.Wrapf(err, "invalid caption")
+	}
+	if def.Name == "" {
+		return errors.Errorf("missing name")
+	}
+	if !snakeCaseRegex.MatchString(def.Name) {
+		return errors.Errorf("name:\"%s\" is not written in snake_case", def.Name)
+	}
+	if def.Name[0] == '_' {
+		return errors.Errorf("name:\"%s\" may not start with '_'", def.Name) //reserved for dynamic items
+	}
+	return nil
+}
+
+func (def PromptDef) Item(s Session) Item {
+	panic("NYI")
+}
+
 //Prompt implements ussd.ItemWithInputHandler
 type ussdPrompt struct {
 	id         string

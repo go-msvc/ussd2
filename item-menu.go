@@ -10,33 +10,52 @@ import (
 	"github.com/google/uuid"
 )
 
-//ussdMenu implements ussd.ItemUsrPrompt
-type ussdMenu struct {
-	id  string
-	def MenuDef
+func init() {
+	registerItemDef("menu", MenuDef{})
 }
 
 type MenuDef struct {
-	Title   string `json:"title"`
+	Title   CaptionDef `json:"title"`
 	Options []MenuOptionDef
 }
 
+func (def MenuDef) Validate() error {
+	if err := def.Title.Validate(); err != nil {
+		return errors.Wrapf(err, "invalid title")
+	}
+	if len(def.Options) < 1 {
+		return errors.Errorf("%d options (requires 1 or more)", len(def.Options))
+	}
+	for i, o := range def.Options {
+		if err := o.Validate(); err != nil {
+			return errors.Wrapf(err, "invalid option[%d]", i)
+		}
+	}
+	return nil
+}
+
 type MenuOptionDef struct {
-	Caption   string `json:"caption"`
-	NextItems []Item `json:"next_items"`
+	Caption     CaptionDef `json:"caption"`
+	NextItemIds []string   `json:"next"`
 }
 
-func DynMenuDef(title string) MenuDef {
-	def := MenuDef{Title: title, Options: []MenuOptionDef{}}
-	return def
-}
-
-func (def MenuDef) With(caption string, nextItems ...Item) MenuDef {
-	def.Options = append(def.Options, MenuOptionDef{
-		Caption:   caption,
-		NextItems: nextItems,
-	})
-	return def
+func (def MenuOptionDef) Validate() error {
+	if err := def.Caption.Validate(); err != nil {
+		return errors.Wrapf(err, "invalid caption")
+	}
+	if len(def.NextItemIds) < 1 {
+		return errors.Errorf("missing next")
+	}
+	for i, n := range def.NextItemIds {
+		if n == "" {
+			return errors.Errorf("next[%d] is empty", i)
+		}
+		if !snakeCaseRegex.MatchString(n) {
+			return errors.Errorf("next[%d]:\"%s\" is not snake_case", i, n)
+		}
+		//note: item id resolution is done later in Item() method
+	}
+	return nil
 }
 
 func (def MenuDef) Item(s Session) Item {
@@ -53,12 +72,38 @@ func (def MenuDef) Item(s Session) Item {
 	return &ussdMenu{id: id, def: def}
 }
 
-func Menu(id string, title string) *ussdMenu {
+//ussdMenu implements ussd.ItemUsrPrompt
+type ussdMenu struct {
+	id  string
+	def MenuDef
+}
+
+func DynMenuDef(title CaptionDef) MenuDef {
+	def := MenuDef{Title: title, Options: []MenuOptionDef{}}
+	return def
+}
+
+func (def MenuDef) With(caption CaptionDef, nextItems ...Item) MenuDef {
+	optionDef := MenuOptionDef{
+		Caption:     caption,
+		NextItemIds: []string{},
+	}
+	for _, n := range nextItems {
+		optionDef.NextItemIds = append(optionDef.NextItemIds, n.ID())
+	}
+	def.Options = append(def.Options, optionDef)
+	return def
+}
+
+func Menu(id string, title CaptionDef) *ussdMenu {
 	if started {
 		panic(errors.Errorf("attempt to define static item Menu(%s) after started", id))
 	}
-	if id == "" || title == "" {
+	if id == "" {
 		panic(errors.Errorf("Menu(%s,%s)", id, title))
+	}
+	if err := title.Validate(); err != nil {
+		panic(errors.Errorf("Menu(%s) with invalid title: %+v", id, err))
 	}
 	m := &ussdMenu{
 		id: id,
@@ -73,7 +118,7 @@ func Menu(id string, title string) *ussdMenu {
 
 func (m ussdMenu) ID() string { return m.id }
 
-func (m *ussdMenu) With(caption string, nextItems ...Item) *ussdMenu {
+func (m *ussdMenu) With(caption CaptionDef, nextItems ...Item) *ussdMenu {
 	if len(nextItems) > 0 { //if menu item is implemented, nextItems may not be nil
 		for i := 0; i < len(nextItems); i++ {
 			if nextItems[i] == nil {
@@ -81,25 +126,28 @@ func (m *ussdMenu) With(caption string, nextItems ...Item) *ussdMenu {
 			}
 		}
 	}
-	m.def.Options = append(m.def.Options, MenuOptionDef{
-		Caption:   caption,
-		NextItems: nextItems, //will be executed in series until the last one, expecting text="" and next="" from others
-	})
+	optionDef := MenuOptionDef{
+		Caption:     caption,
+		NextItemIds: []string{}, //will be executed in series until the last one, expecting text="" and next="" from others
+	}
+	for _, n := range nextItems {
+		optionDef.NextItemIds = append(optionDef.NextItemIds, n.ID())
+	}
+	m.def.Options = append(m.def.Options, optionDef)
 	return m
 }
 
 func (m *ussdMenu) Render(ctx context.Context) string {
-	//s := ctx.Value(CtxSession{}).(Session)
+	s := ctx.Value(CtxSession{}).(Session)
 	//time.Sleep(time.Second) //todo: remove, was just to test console
 
 	//see which page to render
 	//todo...
 
 	//todo: set in session menu option map -> next item
-
-	menuPage := m.def.Title
+	menuPage := m.def.Title.Text(s)
 	for i, o := range m.def.Options {
-		menuPage += fmt.Sprintf("\n%d. %s", i+1, o.Caption)
+		menuPage += fmt.Sprintf("\n%d. %s", i+1, o.Caption.Text(s))
 	}
 
 	//prompt user for input showing this page
@@ -107,17 +155,22 @@ func (m *ussdMenu) Render(ctx context.Context) string {
 }
 
 func (m *ussdMenu) Process(ctx context.Context, input string) ([]Item, error) {
+	s := ctx.Value(CtxSession{}).(Session)
 	if i64, err := strconv.ParseInt(input, 10, 64); err == nil && i64 >= 1 && int(i64) <= len(m.def.Options) {
-		nextItems := m.def.Options[i64-1].NextItems
-		if len(nextItems) == 0 {
+		nextItemIds := m.def.Options[i64-1].NextItemIds
+		if len(nextItemIds) == 0 {
 			log.Errorf("menu(%s) input(%s): this item is not yet implemented", m.id, input)
 			return nil, errors.Errorf("not yet implemented")
 		}
-		nextIds := []string{}
-		for _, i := range nextItems {
-			nextIds = append(nextIds, i.ID())
+		log.Debugf("menu(%s) selected(%s) -> next: %s", m.id, input, strings.Join(nextItemIds, ","))
+		nextItems := []Item{}
+		for i, id := range nextItemIds {
+			item, ok := ItemByID(id, s)
+			if !ok {
+				return nil, errors.Errorf("next[%d]=\"%s\" not found", i, id)
+			}
+			nextItems = append(nextItems, item)
 		}
-		log.Debugf("menu(%s) selected(%s) -> next: %s", m.id, input, strings.Join(nextIds, ","))
 		return nextItems, nil
 	}
 	log.Debugf("menu(%s) input(%s) unknown - display same menu again", m.id, input)
