@@ -27,8 +27,7 @@ type server struct {
 func (s server) Serve(svc ms.Service) error {
 	s.service = svc
 
-	logger.SetGlobalLevel(logger.LevelError) //not to show debug on terminal!
-	//todo: redirect to external file if necessary
+	//todo: redirect to external file if necessary or to channel to show as part of console output
 
 	//assuming this is a ussd service, it must have the following operations:
 	startOper, ok := s.service.GetOper("start")

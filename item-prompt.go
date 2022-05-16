@@ -1,6 +1,10 @@
 package ussd
 
-import "context"
+import (
+	"context"
+
+	"bitbucket.org/vservices/utils/errors"
+)
 
 //Prompt implements ussd.ItemWithInputHandler
 type ussdPrompt struct {
@@ -14,7 +18,17 @@ type InputValidator interface {
 	Validate(input string) error
 }
 
+// func DynPrompt(id string, def PromptDef) Item {
+// 	//todo...
+// }
+
 func Prompt(id string, text string, name string) *ussdPrompt {
+	if started {
+		panic(errors.Errorf("attempt to define static item Prompt(%s) after started", id))
+	}
+	if id == "" || text == "" || name == "" {
+		panic(errors.Errorf("Prompt(%s,%s)", id, text, name))
+	}
 	p := &ussdPrompt{
 		id:         id,
 		text:       text,

@@ -40,6 +40,8 @@ func (req StartRequest) Validate() error {
 }
 
 func (svc service) handleStart(ctx context.Context, req StartRequest) (*Response, error) {
+	//set started true so that any attempts to define static items at runtime will panic
+	started = true
 	log.Debugf("START: %+v", req)
 
 	//session ID on this provider will only be specified if consumer is continuing
@@ -88,7 +90,7 @@ func (svc service) handleContinue(ctx context.Context, req ContinueRequest) (*Re
 		return nil, errors.Errorf("item_id not defined for existing session(%s)", req.SessionID)
 	} else {
 		var ok bool
-		if item, ok = itemByID[id]; !ok {
+		if item, ok = ItemByID(id, s); !ok {
 			return nil, errors.Errorf("session(%s).item_id(%s) not found to continue", req.SessionID, id)
 		}
 	}
