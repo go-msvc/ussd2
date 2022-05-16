@@ -2,18 +2,26 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 
 	"bitbucket.org/vservices/ussd"
+	_ "bitbucket.org/vservices/ussd/ms/console"
 	"bitbucket.org/vservices/utils/errors"
 	"bitbucket.org/vservices/utils/logger"
 	_ "bitbucket.org/vservices/utils/ms/nats"
+	_ "bitbucket.org/vservices/utils/ms/rest"
 )
 
 var log = logger.New()
 
 func main() {
-	logger.SetGlobalLevel(logger.LevelDebug)
+	debugFlagPtr := flag.Bool("d", false, "Debug mode")
+	flag.Parse()
+
+	if *debugFlagPtr {
+		logger.SetGlobalLevel(logger.LevelDebug)
+	}
 
 	//SosCreditAUnAmi:
 	// Menu select 1
@@ -31,7 +39,7 @@ func main() {
 	//temp item used for all menu items not yet implemented
 	nyi := ussd.Final("nyi", "Not yet implemented")
 
-	svc := ussd.NewService(
+	svc := ussd.NewService( //todo: ensure we got msisdn, needed to send SMS...
 		ussd.Menu("sos_credit_menu", "SOS Crédit").
 			With("SOS credit a un ami", promptDestNr, promptAmount, funcSosCreditAUnAmi).
 			With("SOS Credit a TELMA", nyi).
@@ -56,7 +64,11 @@ func main() {
 
 func execSosCreditAUnAmi(ctx context.Context) ([]ussd.Item, error) {
 	s := ctx.Value(ussd.CtxSession{}).(ussd.Session)
-	msisdn := s.Get("msisdn").(string)
+	var msisdn string
+	var ok bool
+	if msisdn, ok = s.Get("msisdn").(string); !ok {
+		return nil, errors.Errorf("sender msisdn not defined")
+	}
 	amount := s.Get("amount").(string)
 	destNr := s.Get("dest_nr").(string)
 

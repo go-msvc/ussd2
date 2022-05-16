@@ -1,5 +1,16 @@
 {
     "server":{
+        "console":{
+            "data":{
+                "msisdn":"27821234567"
+            }
+        }
+    },
+    "_server":{
+        "rest":{
+        }
+    },
+    "__server":{
         "nats":{
             "domain":"TESTING"
         }
