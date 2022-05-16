@@ -7,16 +7,16 @@ type Item interface {
 	ID() string
 }
 
-type ItemSvcExec interface {
+type ItemSvc interface {
 	Item
 	Exec(ctx context.Context) (nextItems []Item, err error) //err to stop
 }
 
-type ItemSvcWait interface {
-	Item
-	Request(ctx context.Context) (err error)                    //err to stop
-	Process(ctx context.Context, value interface{}) (err error) //err to stop
-}
+// type ItemSvcWait interface {
+// 	Item
+// 	Request(ctx context.Context) (err error)                    //err to stop
+// 	Process(ctx context.Context, value interface{}) (err error) //err to stop
+// }
 
 type ItemUsr interface {
 	Item

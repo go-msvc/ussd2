@@ -38,7 +38,7 @@ func NewSession(ss Sessions, id string, t0, t1 time.Time, data map[string]interf
 	if s.namesToSet == nil {
 		s.namesToSet = map[string]interface{}{}
 	}
-	log.Debugf("Created Local Session(%s): %+v", s.id, s.data)
+	log.Debugf("Local Session(%s): %+v", s.id, s.data)
 	return s
 }
 

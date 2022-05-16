@@ -28,105 +28,242 @@ type service struct {
 }
 
 type StartRequest struct {
-	ID           string                 `json:"id" doc:"Unique session ID, typically made up of source and user e.g. 'sigtran:27821234567'. It could be UUID as well, but using same string always for a user ensures the user can only have one session at any time and starting new session will delete any old session."`
-	Data         map[string]interface{} `json:"data" doc:"Initial data values to set in the new session"`
-	ItemID       string                 `json:"item_id" doc:"ID of USSD item to start the session. It must be a server side item to return next item, typically a ussd router to process the dialed USSD string."`
-	Input        string                 `json:"input" doc:"User input is initially dialed USSD string for start, and prompt/menu input for continuation."`
-	ResponderID  string                 `json:"responder_id" doc:"Identifies the responder to use"`
-	ResponderKey string                 `json:"responder_key" doc:"Key given to the responder to send to the correct user"`
+	SessionID string                 `json:"session_id" doc:"Unique session ID, typically made up of source and user e.g. 'sigtran:27821234567'. It could be UUID as well, but using same string always for a user ensures the user can only have one session at any time and starting new session will delete any old session."`
+	Data      map[string]interface{} `json:"data" doc:"Initial data values to set in the new session, e.g. msisdn, email or account_id of the user that requested the service, dialled ussd string if there is a router step, etc..."`
 }
 
-type StartResponse struct {
-	ID      string       `json:"id" doc:"Session ID to repeat in subsequent requests for this session."`
-	Type    ResponseType `json:"type" doc:"Type of response is either RESPONSE(=prompt/menu)|RELEASE(=final)|REDIRECT"`
-	Message string       `json:"message" doc:"Content for RESPONSE|RELEASE, or USSD string for REDIRECT"`
+func (req StartRequest) Validate() error {
+	if req.SessionID == "" {
+		return errors.Errorf("missing session_id")
+	}
+	return nil
 }
 
-func (svc service) handleStart(ctx context.Context, req StartRequest) (StartResponse, error) {
+func (svc service) handleStart(ctx context.Context, req StartRequest) (*Response, error) {
+	log.Debugf("START: %+v", req)
+
 	//session ID on this provider will only be specified if consumer is continuing
 	//on an existing session
 	// sid := m.Header.Provider.Sid //"ussd:" + m.Request.Msisdn
 	// ...sid.... ussd start open must expect "" while continue/abort expects an id
 	// or ussd still create/get session because other services does not need sesison...
 	// so ignore sid in consumer and provider? I think so...
-
-	if req.ID == "" {
-		req.ID = uuid.New().String()
+	if req.SessionID == "" {
+		req.SessionID = uuid.New().String()
 	}
-	s, err := sessions.New(req.ID, req.Data)
+	sessions.Del(req.SessionID)
+	s, err := sessions.New(req.SessionID, req.Data)
 	if err != nil {
-		return StartResponse{}, errors.Wrapf(err, "failed to create session(%s)", req.ID)
+		return nil, errors.Wrapf(err, "failed to create session(%s)", req.SessionID)
 	}
-	s.Set("start_request", req)
-	//ctx = context.WithValue(ctx, CtxSession{}, s)
-
-	//process until reached next user item
-	return StartResponse{
-		Message: "NYI",
-		Type:    ResponseTypeRelease, //todo: must be a Prompt or Final
-	}, nil
+	return svc.Run(s, svc.initItem, "")
 }
 
-type ContinueRequest StartRequest
-
-type ContinueResponse StartResponse
-
-func (svc service) handleContinue(ctx context.Context, req ContinueRequest) (ContinueResponse, error) {
-	return ContinueResponse{}, errors.Errorf("NYI")
+type ContinueRequest struct {
+	SessionID string `json:"session_id" doc:"Copied from previous response"`
+	Input     string `json:"input" doc:"User's answer to the last prompt"`
 }
+
+func (req ContinueRequest) Validate() error {
+	if req.SessionID == "" {
+		return errors.Errorf("missing session_id")
+	}
+	return nil
+}
+
+func (svc service) handleContinue(ctx context.Context, req ContinueRequest) (*Response, error) {
+	log.Debugf("CONTINUE: %+v", req)
+	//get existing session
+	s, err := sessions.Get(req.SessionID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "not an existing session(%s)", req.SessionID)
+	}
+	if s == nil {
+		return nil, errors.Errorf("not an existing session(%s)", req.SessionID)
+	}
+
+	log.Debugf("Got existing session(%s)", s.ID())
+	var item Item
+	if id, ok := s.Get("item_id").(string); !ok {
+		return nil, errors.Errorf("item_id not defined for existing session(%s)", req.SessionID)
+	} else {
+		var ok bool
+		if item, ok = itemByID[id]; !ok {
+			return nil, errors.Errorf("session(%s).item_id(%s) not found to continue", req.SessionID, id)
+		}
+	}
+
+	return svc.Run(s, item, req.Input)
+}
+
+func (svc service) Run(s Session, item Item, input string) (*Response, error) {
+	//rebuild list of next items from session data
+	nextItems := []Item{}
+	if nextItemIds, ok := s.Get("next_item_ids").([]string); ok {
+		for _, id := range nextItemIds {
+			if nextItem, ok := itemByID[id]; !ok {
+				return nil, errors.Errorf("unknown next item_id(%s)", id)
+			} else {
+				nextItems = append(nextItems, nextItem)
+			}
+		}
+	}
+	log.Debugf("Run: item(%s) and %d next items", item.ID(), len(nextItems))
+	for _, i := range nextItems {
+		log.Debugf("   item(%s): %T", i.ID(), i)
+	}
+
+	defer func() {
+		if s != nil {
+			if item != nil {
+				s.Set("item_id", item.ID())
+				nextItemIDs := []string{}
+				for _, i := range nextItems {
+					nextItemIDs = append(nextItemIDs, i.ID())
+				}
+				s.Set("next_item_ids", nextItemIDs)
+				s.Sync()
+			} else {
+				s.Del("item_id")
+				s.Del("next_item_ids")
+			}
+		} //if session still exists
+	}()
+
+	ctx := context.WithValue(context.Background(), CtxSession{}, s)
+
+	//see if current item is a user item waiting for input
+	//(even when user input is "")
+	if usrPromptItem, ok := item.(ItemUsrPrompt); ok {
+		log.Debugf("Item(%s):%T is processing input(%s)...", item.ID(), item, input)
+		moreNextItems, err := usrPromptItem.Process(ctx, input)
+		if err != nil {
+			return nil, errors.Wrapf(err, "prompt(%s).Process(%s) failed", item.ID(), input)
+		}
+		if len(moreNextItems) > 0 {
+			nextItems = append(moreNextItems, nextItems...)
+		}
+		//step to next
+		//note: prompt/menu that want's to repeat the same prompt/menu, must return
+		//themselves in the moreNextItems list
+		if len(nextItems) < 1 {
+			return nil, errors.Errorf("no next item after processing input")
+		}
+		item = nextItems[0]
+		nextItems = nextItems[1:]
+	}
+
+	for item != nil {
+		log.Infof("LOOP Item(%s):%T ...", item.ID(), item)
+		if svcItem, ok := item.(ItemSvc); ok {
+			log.Debugf("Service item...")
+			moreNextItems, err := svcItem.Exec(ctx)
+			if err != nil {
+				return nil, errors.Wrapf(err, "service item(%s:%T).Exec() failed", item, item)
+			}
+			if len(moreNextItems) > 0 {
+				nextItems = append(moreNextItems, nextItems...)
+			}
+			if len(nextItems) == 0 {
+				item = nil
+			} else {
+				item = nextItems[0]
+				nextItems = nextItems[1:]
+			}
+			continue
+		} //if ItemSvc
+
+		if usrItem, ok := item.(ItemUsr); ok {
+			res := Response{
+				SessionID: s.ID(),
+				Type:      ResponseTypeResponse,
+				Message:   usrItem.Render(ctx),
+			}
+			if _, ok := item.(ItemUsrPrompt); !ok {
+				res.SessionID = ""
+				res.Type = ResponseTypeRelease
+				sessions.Del(s.ID())
+				s = nil
+			}
+			log.Debugf("User item(%s):%T -> Response: %+v", item.ID(), item, res)
+			return &res, nil
+		} //if ItemUsr
+		return nil, errors.Errorf("item(%s) unknown type %T", item.ID(), item)
+	} //for loop
+	return nil, errors.Errorf("not expected to get here")
+} //service.Run()
 
 type AbortRequest struct {
-	ID string `json:"id" doc:"Unique session ID also used in start/continue Request."`
+	SessionID string `json:"session_id" doc:"Copied from previous response"`
 }
 
-type AbortResponse struct {
+func (req *AbortRequest) Validate() error {
+	if req.SessionID == "" {
+		return errors.Errorf("missing session_id")
+	}
+	return nil
 }
 
-func (svc service) handleAbort(ctx context.Context, req AbortRequest) (AbortResponse, error) {
-	return AbortResponse{}, errors.Errorf("NYI")
+func (svc service) handleAbort(ctx context.Context, req AbortRequest) error {
+	log.Debugf("ABORT: %+v", req)
+	//get existing session
+	s, err := sessions.Get(req.SessionID)
+	if err != nil {
+		return errors.Wrapf(err, "not an existing session(%s)", req.SessionID)
+	}
+	if s == nil {
+		return errors.Errorf("not an existing session(%s)", req.SessionID)
+	}
+	sessions.Del(req.SessionID)
+	return nil
 }
 
-func (s service) handleUSSD(ctx context.Context, req Request) (Response, error) {
+func (s service) handleUSSD(ctx context.Context, req Request) (*Response, error) {
 	switch req.Type {
 	case RequestTypeRequest:
-		res, err := s.handleStart(
-			ctx,
-			StartRequest{})
+		startRequest := StartRequest{
+			SessionID: "ussd:" + req.Msisdn,
+			Data: map[string]interface{}{
+				"msisdn": req.Msisdn,
+				"ussd":   req.Message,
+			},
+		}
+		res, err := s.handleStart(ctx, startRequest)
 		if err != nil {
-			return Response{
+			return &Response{
 				Type:    ResponseTypeRelease,
 				Message: err.Error(),
 			}, nil
-		} else {
-			return Response{
-				Type:    res.Type,
-				Message: res.Message,
-			}, nil
 		}
+		return res, nil
+
 	case RequestTypeResponse:
-		res, err := s.handleContinue(
-			ctx,
-			ContinueRequest{})
-		if err != nil {
-			return Response{
-				Message: res.Message,
-			}, nil
-		} else {
-			return Response{}, nil
+		contRequest := ContinueRequest{
+			SessionID: req.SessionID,
+			Input:     req.Message,
 		}
+		res, err := s.handleContinue(ctx, contRequest)
+		if err != nil {
+			return &Response{
+				Type:    ResponseTypeRelease,
+				Message: err.Error(),
+			}, nil
+		}
+		return res, nil
+
 	case RequestTypeRelease:
-		_, err := s.handleAbort(
+		err := s.handleAbort(
 			ctx,
 			AbortRequest{})
 		if err != nil {
-			return Response{}, nil
-		} else {
-			return Response{}, nil
+			log.Errorf("abort failed: %+v", err)
 		}
-	default:
-		return Response{
+		return &Response{
 			Type:    ResponseTypeRelease,
-			Message: "Unexpected request type",
+			Message: "", //nothing will be displayed to the user
 		}, nil
+
+	default:
+		return nil, errors.Errorf("unexpected type %d", req.Type)
 	}
 } //handleUSSD()

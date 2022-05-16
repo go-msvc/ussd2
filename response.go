@@ -9,8 +9,9 @@ import (
 
 //Response is compatible with ms-vservices-ussd-router
 type Response struct {
-	Type    ResponseType `json:"type"`
-	Message string       `json:"message"`
+	SessionID string       `json:"session_id" doc:"If not final, this will be populated and must be repeated in next Continue or Abort request."`
+	Type      ResponseType `json:"type" doc:"Type of response will be RESPONSE|RELEASE|REDIRECT"`
+	Message   string       `json:"message" doc:"Message is content for user on RESPONSE|RELEASE or new id for REDIRECT."`
 }
 
 func (res Response) Validate() error {
@@ -54,7 +55,8 @@ func (t ResponseType) String() string {
 }
 
 func (t *ResponseType) Parse(s string) error {
-	if v, ok := resTypeValue[strings.ToLower(s)]; ok {
+	s = strings.ToUpper(s)
+	if v, ok := resTypeValue[s]; ok {
 		*t = v
 		return nil
 	}
@@ -66,7 +68,8 @@ func (t *ResponseType) UnmarshalJSON(v []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return errors.Errorf("ResponseType(%s) expected quoted value", s)
 	}
-	if err := t.Parse(s[1 : len(s)-2]); err != nil {
+	s = s[1 : len(s)-1]
+	if err := t.Parse(s); err != nil {
 		return errors.Wrapf(err, "unable to unmarshal ResponseType(%s)", s)
 	}
 	return nil

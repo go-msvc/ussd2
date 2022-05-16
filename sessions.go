@@ -65,6 +65,10 @@ func (ss *inMemorySessions) Get(id string) (Session, error) {
 		log.Debugf("retrieved ims(%s): %+v", id, ims.data)
 		return s, nil
 	}
+	log.Debugf("session(%s) not found. %d sessions exists:", id, len(ss.sessionByID))
+	for id := range ss.sessionByID {
+		log.Debugf("  %s", id)
+	}
 	return nil, nil //session not found, not an error, just nil value, err is for real errors when Get fail and session could actually exist
 }
 

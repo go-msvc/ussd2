@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"bitbucket.org/vservices/utils/errors"
 )
@@ -77,13 +78,19 @@ func (m *ussdMenu) Render(ctx context.Context) string {
 }
 
 func (m *ussdMenu) Process(ctx context.Context, input string) ([]Item, error) {
-	log.Debugf("menu(%s) got input(%s) ...", m.id, input)
 	if i64, err := strconv.ParseInt(input, 10, 64); err == nil && i64 >= 1 && int(i64) <= len(m.options) {
 		nextItems := m.options[i64-1].nextItems
 		if len(nextItems) == 0 {
-			return []Item{m}, errors.Errorf("not yet implemented") //display same item with error
+			log.Errorf("menu(%s) input(%s): this item is not yet implemented", m.id, input)
+			return nil, errors.Errorf("not yet implemented")
 		}
+		nextIds := []string{}
+		for _, i := range nextItems {
+			nextIds = append(nextIds, i.ID())
+		}
+		log.Debugf("menu(%s) selected(%s) -> next: %s", m.id, input, strings.Join(nextIds, ","))
 		return nextItems, nil
 	}
-	return []Item{m}, nil //redisplay without error
+	log.Debugf("menu(%s) input(%s) unknown - display same menu again", m.id, input)
+	return []Item{m}, nil //redisplay this same menu without error
 }

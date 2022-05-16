@@ -7,11 +7,28 @@ import (
 	"bitbucket.org/vservices/utils/errors"
 )
 
-//Request is compatible with ms-vservices-ussd-router
+//Request is compatible with ms-vservices-ussd-router and -menu
+//but we do without prompt request, which is how menu is used from router
+//
+// type Request struct {
+// 	RequestHeader                        //embedded
+// 	Data          map[string]interface{} `json:"data,omitempty" doc:"additional data are JSON encoded inside \"data\":{...} object"`
+// }
+// type RequestHeader struct {
+// 	Type          MessageType      `json:"type" doc:"Indicates REQUEST (initial request), RESPONSE (for user input) or RELEASE (caller aborts the session)."`
+// 	Source        string           `json:"source" doc:"Name of interface/service where the USSD session originated from."`
+// 	MSISDN        string           `json:"msisdn" doc:"Subscriber MSISDN in international format, e.g. \"27821234567\""`
+// 	Message       string           `json:"message" doc:"USSD string dialed by user or input provided by the user after being prompted."`
+// 	SessionID     string           `json:"session_id,omitempty" doc:"Session ID to be echoed in the ussd.Response."`
+// 	PromptService *ServiceProvider `json:"prompt_service,omitempty" doc:"Optional: Service to call to prompt the user."`
+// }
+
 type Request struct {
-	Type    RequestType `json:"type"`
-	Msisdn  string      `json:"msisdn"`
-	Message string      `json:"message"`
+	Type      RequestType            `json:"type"`
+	Msisdn    string                 `json:"msisdn"`
+	Message   string                 `json:"message"`
+	SessionID string                 `json:"session_id,omitempty" doc:"Session ID to be echoed in the ussd.Response."`
+	Data      map[string]interface{} `json:"data" doc:"Data to store in the session"`
 }
 
 func (req Request) Validate() error {
@@ -58,11 +75,12 @@ func (t RequestType) String() string {
 }
 
 func (t *RequestType) Parse(s string) error {
-	if v, ok := reqTypeValue[strings.ToLower(s)]; ok {
+	s = strings.ToUpper(s)
+	if v, ok := reqTypeValue[s]; ok {
 		*t = v
 		return nil
 	}
-	return errors.Errorf("unknown ussd.RequestType(%d)", t)
+	return errors.Errorf("unknown ussd.RequestType(%s)", s)
 }
 
 func (t *RequestType) UnmarshalJSON(v []byte) error {
@@ -70,7 +88,8 @@ func (t *RequestType) UnmarshalJSON(v []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return errors.Errorf("RequestType(%s) expected quoted value", s)
 	}
-	if err := t.Parse(s[1 : len(s)-2]); err != nil {
+	s = s[1 : len(s)-1]
+	if err := t.Parse(s); err != nil {
 		return errors.Wrapf(err, "unable to unmarshal RequestType(%s)", s)
 	}
 	return nil

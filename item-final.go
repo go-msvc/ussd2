@@ -2,8 +2,8 @@ package ussd
 
 import "context"
 
-func NewFinal(id string, text string) *Final {
-	f := &Final{
+func Final(id string, text string) *ussdFinal {
+	f := &ussdFinal{
 		id:   id,
 		text: text,
 	}
@@ -12,13 +12,13 @@ func NewFinal(id string, text string) *Final {
 }
 
 //Final implements ussd.Item
-type Final struct {
+type ussdFinal struct {
 	id   string
 	text string
 }
 
-func (f Final) ID() string { return f.id }
+func (f ussdFinal) ID() string { return f.id }
 
-func (f Final) Render(ctx context.Context) string {
+func (f ussdFinal) Render(ctx context.Context) string {
 	return f.text
 }
