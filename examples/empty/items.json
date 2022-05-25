@@ -3,11 +3,11 @@
         "menu":{
             "title":{"fr":"SOS Crédit"},
             "options":[
-                {"caption":{"fr":"SOS credit a un ami"}, "next":["prompt_dest_nr", "prompt_amount", "_func_sos_credit_a_un_ami"]},
-                {"caption":{"fr":"SOS credit a TELMA"},"next":["select_amount", "_func_sos_credit_a_telma"]},
-                {"caption":{"fr":"SOS offre a TELMA"},"next":["_func_get_offers"]},
-                {"caption":{"fr":"Rembourser SOS"},"next":[]},
-                {"caption":{"fr":"Aide"},"next":[]}
+                {"caption":{"fr":"SOS credit a un ami"}, "next":["prompt_dest_nr", "prompt_amount", "func_sos_credit_a_un_ami"]},
+                {"caption":{"fr":"SOS credit a TELMA"}, "next":["select_amount", "func_sos_credit_a_telma"]},
+                {"caption":{"fr":"SOS offre a TELMA"}, "next":["func_get_offers"]},
+                {"caption":{"fr":"Rembourser SOS"}, "next":["nyi"]},
+                {"caption":{"fr":"Aide"}, "next":["nyi"]}
             ]
         }
     },
@@ -29,7 +29,7 @@
             "options":[
                 {"caption":{"fr":"200 Ar"}, "next":["set_amount_200"]},
                 {"caption":{"fr":"500 Ar"}, "next":["set_amount_500"]},
-                {"caption":{"fr":"1000 Ar"}, "next":["set_amount_1000"]}
+                {"caption":{"fr":"1000 Ar"}, "next":[{"set":{"name":"amount","value":"1000"}}]}
             ]
         }
     }

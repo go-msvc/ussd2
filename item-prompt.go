@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"bitbucket.org/vservices/utils/errors"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -13,6 +14,7 @@ func init() {
 type PromptDef struct {
 	Caption CaptionDef `json:"caption"`
 	Name    string     `json:"name"`
+	//validators []InputValidator???
 }
 
 func (def PromptDef) Validate() error {
@@ -32,15 +34,23 @@ func (def PromptDef) Validate() error {
 }
 
 func (def PromptDef) Item(s Session) Item {
-	panic("NYI")
+	if s == nil {
+		panic("session is nil")
+	}
+
+	//store as new item in the session with uuid
+	id := "_item_prompt_" + uuid.New().String()
+	s.Set(id, def)
+
+	//return item that can be used locally, but it will be recreated
+	//later from session data if control is first passed back to the user
+	return &ussdPrompt{id: id, def: def}
 }
 
 //Prompt implements ussd.ItemWithInputHandler
 type ussdPrompt struct {
-	id         string
-	text       string
-	name       string
-	validators []InputValidator
+	id  string
+	def PromptDef
 }
 
 type InputValidator interface {
@@ -51,18 +61,19 @@ type InputValidator interface {
 // 	//todo...
 // }
 
-func Prompt(id string, text string, name string) *ussdPrompt {
+func Prompt(id string, caption CaptionDef, name string) *ussdPrompt {
 	if started {
 		panic(errors.Errorf("attempt to define static item Prompt(%s) after started", id))
 	}
-	if id == "" || text == "" || name == "" {
-		panic(errors.Errorf("Prompt(%s,%s)", id, text, name))
+	if id == "" || !snakeCaseRegex.MatchString(name) {
+		panic(errors.Errorf("Prompt(id:%s,name:%s)", id, name))
+	}
+	if err := caption.Validate(); err != nil {
+		panic(errors.Wrapf(err, "invalid prompt caption"))
 	}
 	p := &ussdPrompt{
-		id:         id,
-		text:       text,
-		name:       name,
-		validators: nil,
+		id:  id,
+		def: PromptDef{Caption: caption, Name: name},
 	}
 	itemByID[id] = p
 	return p
@@ -73,18 +84,19 @@ func (p ussdPrompt) ID() string {
 }
 
 func (p *ussdPrompt) Render(ctx context.Context) string {
-	return p.text
+	s := ctx.Value(CtxSession{}).(Session)
+	return p.def.Caption.Text(s)
 }
 
 func (p *ussdPrompt) Process(ctx context.Context, input string) ([]Item, error) {
 	s := ctx.Value(CtxSession{}).(Session)
-	for _, v := range p.validators {
-		if err := v.Validate(input); err != nil {
-			return []Item{p}, err //repeat prompt with error message
-		}
-	}
+	// for _, v := range p.validators {
+	// 	if err := v.Validate(input); err != nil {
+	// 		return []Item{p}, err //repeat prompt with error message
+	// 	}
+	// }
 	//todo: optional validator + invalid message
-	s.Set(p.name, input)
-	log.Debugf("Prompt(%s) stored %s=%s", p.id, p.name, input)
+	s.Set(p.def.Name, input)
+	log.Debugf("Prompt(%s) stored %s=%s", p.id, p.def.Name, input)
 	return nil, nil
 }

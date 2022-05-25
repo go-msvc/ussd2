@@ -8,9 +8,11 @@ import (
 
 //ItemDef can be defined in code, loaded from a file or defined in session data to create an item
 type ItemDef interface {
-	//the Item() method creates the item
-	//before the server start, it is called with s==nil to create static items, e.g. from code/file
-	//after start, it must be called with s!=nil to create dynamic items in the current session
+	//the StaticItem() creates a static item before the first transaction is started
+	//it panics if called after startup
+	StaticItem(id string) Item
+	//the Item() method creates a dynamic item at runtime
+	//it panics if called during startup (without a session)
 	Item(s Session) Item
 }
 
@@ -25,9 +27,11 @@ func registerItemDef(name string, def ItemDef) {
 		panic(errors.Errorf("duplicate itemDefByName[%s]", name))
 	}
 	itemDefByName[name] = def
+	registeredItemDefNames = append(registeredItemDefNames, name)
 }
 
 var (
-	itemDefMutex  sync.Mutex
-	itemDefByName = map[string]ItemDef{}
+	itemDefMutex           sync.Mutex
+	itemDefByName          = map[string]ItemDef{}
+	registeredItemDefNames = []string{}
 )

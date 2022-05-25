@@ -28,12 +28,12 @@ func main() {
 	//SosCreditAUnAmi:
 	// Menu select 1
 	// Entrer numero de tel. Destinataire :
-	promptDestNr := ussd.Prompt("prompt_dest_nr", "Entrer numero de tel. Destinataire :", "dest_nr")
+	promptDestNr := ussd.Prompt("prompt_dest_nr", ussd.CaptionDef{"fr": "Entrer numero de tel. Destinataire :"}, "dest_nr")
 	// 111
 	// Verifiez le numero de telephone SVP.
 	// 341111111
 	// Montant demande:
-	promptAmount := ussd.Prompt("prompt_amount", "Montant demande:", "amount")
+	promptAmount := ussd.Prompt("prompt_amount", ussd.CaptionDef{"fr": "Montant demande:"}, "amount")
 	// 200
 	// Votre demande de recharge de 200 Ar a ete envoyee a 261341111111.
 	funcSosCreditAUnAmi := ussd.Func("exec_sos_credit_a_un_ami", execSosCreditAUnAmi)
@@ -52,6 +52,10 @@ func main() {
 
 	//temp item used for all menu items not yet implemented
 	nyi := ussd.Final("nyi", ussd.CaptionDef{"fr": "Not yet implemented"})
+
+	if err := ussd.LoadItems("./items.json"); err != nil {
+		panic(errors.Errorf("failed to load items.json: %+v", err))
+	}
 
 	svc := ussd.NewService( //todo: ensure we got msisdn, needed to send SMS...
 		ussd.Menu("sos_credit_menu", ussd.CaptionDef{"fr": "SOS Crédit"}).
