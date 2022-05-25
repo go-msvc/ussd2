@@ -17,8 +17,7 @@ import (
 var log = logger.New()
 
 var (
-	funcSosApplyOffer ussd.Item
-	startMenu         ussd.Item
+	startMenu ussd.Item
 )
 
 func main() {
@@ -30,35 +29,16 @@ func main() {
 		logger.SetGlobalLevel(logger.LevelError)
 	}
 
-	// //SosCreditAUnAmi:
-	// // Menu select 1
-	// // Entrer numero de tel. Destinataire :
-	// promptDestNr := ussd.Prompt("prompt_dest_nr", ussd.CaptionDef{"fr": "Entrer numero de tel. Destinataire :"}, "dest_nr")
-	// // 111
-	// // Verifiez le numero de telephone SVP.
-	// // 341111111
-	// // Montant demande:
-	// promptAmount := ussd.Prompt("prompt_amount", ussd.CaptionDef{"fr": "Montant demande:"}, "amount")
-	// // 200
-	// // Votre demande de recharge de 200 Ar a ete envoyee a 261341111111.
-	/*funcSosCreditAUnAmi := */
+	//register functions written in go
+	//so they can be referenced from other items and in the json file
 	ussd.Func("func_sos_credit_a_un_ami", execSosCreditAUnAmi)
-
-	// //SOS Credit a TELMA:
-	// menuSelectAmount := ussd.Menu("select_amount", ussd.CaptionDef{"fr": "Montant:"}).
-	// 	With(ussd.CaptionDef{"fr": "200"}, ussd.Set("", "amount", "200")).
-	// 	With(ussd.CaptionDef{"fr": "500"}, ussd.Set("", "amount", "500")).
-	// 	With(ussd.CaptionDef{"fr": "1000"}, ussd.Set("", "amount", "1000"))
-	// 	//With("back")	//todo: back must clear/replace []nextItems
-	/*funcSosCreditATelma := */
 	ussd.Func("func_sos_credit_a_telma", execSosCreditATelma)
-
 	ussd.Func("func_get_offers", execSosGetOffers)
+	ussd.Func("exec_sos_apply_offer", execSosApplyOffer)
 
-	// //register this func that is later called by id from dynamic menu
-	funcSosApplyOffer = ussd.Func("exec_sos_apply_offer", execSosApplyOffer)
-
-	//temp item used for all menu items not yet implemented
+	//other types of items can be defined in code and referenced from JSON too
+	//but this could also be defined in JSON file with:
+	//	"nyi":{"final":{"caption":{"fr":"Not yet implemented"}}}
 	ussd.Final("nyi", ussd.CaptionDef{"fr": "Not yet implemented"})
 
 	if err := ussd.LoadItems("./items.json"); err != nil {
@@ -67,19 +47,18 @@ func main() {
 
 	//todo: resolve all next item references not yet defined
 
+	//get start item defined in the JSON file:
 	var ok bool
 	startMenu, ok = ussd.ItemByID("start", nil)
 	if !ok {
 		panic(errors.Errorf("start item not found"))
 	}
 
-	svc := ussd.NewService(startMenu) //todo: ensure we got msisdn, needed to send SMS...
-	// ussd.Menu("sos_credit_menu", ussd.CaptionDef{"fr": "SOS Crédit"}).
-	// 	With(ussd.CaptionDef{"fr": "SOS credit a un ami"}, promptDestNr, promptAmount, funcSosCreditAUnAmi).
-	// 	With(ussd.CaptionDef{"fr": "SOS credit a TELMA"}, menuSelectAmount, funcSosCreditATelma).
-	// 	With(ussd.CaptionDef{"fr": "SOS offre a TELMA"}, ussd.Func("func_get_offers", execSosGetOffers)).
-	// 	With(ussd.CaptionDef{"fr": "Rembourser SOS"}, nyi).
-	// 	With(ussd.CaptionDef{"fr": "Aide"}, nyi))
+	//todo: before menu is displayed, ensure we got msisdn, needed to send SMS...
+	//and possible load some user account details...
+
+	//create and run the USSD service:
+	svc := ussd.NewService(startMenu)
 	if err := svc.Run(); err != nil {
 		panic(errors.Errorf("failed to run: %+v", err))
 	}

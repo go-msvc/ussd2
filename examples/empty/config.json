@@ -1,5 +1,5 @@
 {
-    "server":{
+    "__server":{
         "console":{
             "data":{
                 "msisdn":"27821234567"
@@ -10,9 +10,9 @@
         "rest":{
         }
     },
-    "__server":{
+    "server":{
         "nats":{
-            "domain":"TESTING"
+            "domain":"sos_credit"
         }
     }
 }
