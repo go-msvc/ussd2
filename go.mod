@@ -1,12 +1,12 @@
-module bitbucket.org/vservices/ussd
+module github.com/jansemmelink/ussd2
 
-go 1.18
+go 1.17
 
 replace (
-	bitbucket.org/vservices/utils => ../utils.js2
+	github.com/jansemmelink/utils2 => ../utils2
 )
 
-require bitbucket.org/vservices/utils v0.0.0
+require github.com/jansemmelink/utils2 v0.0.0
 
 require (
 	github.com/google/uuid v1.3.0

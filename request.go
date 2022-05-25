@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/vservices/utils/errors"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 //Request is compatible with ms-vservices-ussd-router and -menu

@@ -4,8 +4,8 @@ import (
 	"context"
 	"regexp"
 
-	"bitbucket.org/vservices/utils/errors"
 	"github.com/google/uuid"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 func init() {

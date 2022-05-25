@@ -1,8 +1,8 @@
 package console
 
 import (
-	"bitbucket.org/vservices/utils/errors"
-	"bitbucket.org/vservices/utils/ms"
+	"github.com/jansemmelink/utils2/errors"
+	"github.com/jansemmelink/utils2/ms"
 )
 
 func init() {

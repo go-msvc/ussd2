@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/vservices/ussd"
-	"bitbucket.org/vservices/utils/errors"
-	"bitbucket.org/vservices/utils/logger"
-	"bitbucket.org/vservices/utils/ms"
+	ussd "github.com/jansemmelink/ussd2"
+	"github.com/jansemmelink/utils2/errors"
+	"github.com/jansemmelink/utils2/logger"
+	"github.com/jansemmelink/utils2/ms"
 )
 
 var log = logger.New()

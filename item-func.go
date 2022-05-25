@@ -3,7 +3,7 @@ package ussd
 import (
 	"context"
 
-	"bitbucket.org/vservices/utils/errors"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 //functions cannot be defined after start as it refers to a code function

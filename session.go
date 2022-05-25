@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"bitbucket.org/vservices/utils/logger"
+	"github.com/jansemmelink/utils2/logger"
 )
 
 var log = logger.New()

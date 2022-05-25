@@ -3,7 +3,7 @@ package ussd
 import (
 	"strings"
 
-	"bitbucket.org/vservices/utils/errors"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 //caption stores text for language codes

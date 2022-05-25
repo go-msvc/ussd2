@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math/rand"
 
-	"bitbucket.org/vservices/ussd"
-	_ "bitbucket.org/vservices/ussd/ms/console"
-	"bitbucket.org/vservices/utils/errors"
-	"bitbucket.org/vservices/utils/logger"
-	_ "bitbucket.org/vservices/utils/ms/nats"
-	_ "bitbucket.org/vservices/utils/ms/rest"
+	ussd "github.com/jansemmelink/ussd2"
+	_ "github.com/jansemmelink/ussd2/ms/console"
+	"github.com/jansemmelink/utils2/errors"
+	"github.com/jansemmelink/utils2/logger"
+	_ "github.com/jansemmelink/utils2/ms/nats"
+	_ "github.com/jansemmelink/utils2/ms/rest"
 )
 
 var log = logger.New()

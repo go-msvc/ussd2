@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"bitbucket.org/vservices/utils/config"
-	"bitbucket.org/vservices/utils/errors"
+	"github.com/jansemmelink/utils2/config"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 //Item is any type of USSD service processing step
@@ -46,7 +46,7 @@ type ItemUsrPrompt interface {
 //           itemByID does not change after started is set to true!
 var (
 	staticItemByID = map[string]Item{}
-	started  = false
+	started        = false
 )
 
 func ItemByID(id string, s Session) (Item, bool) {

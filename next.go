@@ -3,7 +3,7 @@ package ussd
 import (
 	"encoding/json"
 
-	"bitbucket.org/vservices/utils/errors"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 type NextItemsDef []*NextItem

@@ -3,7 +3,7 @@ package ussd
 import (
 	"sync"
 
-	"bitbucket.org/vservices/utils/errors"
+	"github.com/jansemmelink/utils2/errors"
 )
 
 //ItemDef can be defined in code, loaded from a file or defined in session data to create an item
