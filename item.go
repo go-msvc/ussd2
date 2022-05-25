@@ -62,13 +62,17 @@ func ItemByID(id string, s Session) (Item, bool) {
 		return nil, false //also not present in the current session
 	}
 
-	log.Debugf("Found %s def in session: (%T)%+v", id, defValue, defValue)
-	itemDef, ok := defValue.(ItemDef)
+	itemDefObj, ok := defValue.(map[string]interface{}) //json object read from session data
 	if !ok {
-		log.Errorf("session(%s) = (%T)%+v != ItemDef", id, defValue, defValue)
+		log.Errorf("session(%s) = (%T)%+v != ItemDefObj", id, defValue, defValue)
 		return nil, false
 	}
-	return itemDef.Item(s), true
+	item, err := makeItem(id, itemDefObj)
+	if err != nil {
+		log.Errorf("failed to make item(%s) from session object %+v: %+v", id, itemDefObj, err)
+		return nil, false
+	}
+	return item, true
 }
 
 func LoadItems(fn string) error {
@@ -83,7 +87,6 @@ func LoadItems(fn string) error {
 	}
 
 	for id, itemDefObj := range itemDefsInFile {
-		log.Debugf("decoding item obj %s: %+v", id, itemDefObj)
 		if len(itemDefObj) != 1 {
 			return errors.Errorf("item(%s) has %d entries instead of 1 of %s", id, len(itemDefObj), strings.Join(registeredItemDefNames, "|"))
 		}
@@ -95,7 +98,6 @@ func LoadItems(fn string) error {
 			return errors.Errorf("file %s defines item(%s):%T already defined as item(%s):%T", fn, id, item, id, existingItem)
 		}
 		staticItemByID[id] = item
-		log.Debugf("File(%s): item(%s):%T", fn, id, item)
 	}
 	return nil
 }
@@ -107,12 +109,10 @@ func makeItem(id string, itemDefObj map[string]interface{}) (Item, error) {
 		break //only one item
 	}
 
-	log.Debugf("item(%s) is \"%s\": %+v", id, itemDefName, itemDefValue)
 	itemDefTmpl, ok := itemDefByName[itemDefName]
 	if !ok {
 		return nil, errors.Errorf("item(%s) has unknown type {\"%s\":{...}}", id, itemDefName)
 	}
-	log.Debugf("parsing into %T...", itemDefTmpl)
 
 	itemDefValuePtr := reflect.New(reflect.TypeOf(itemDefTmpl))
 	itemDefJSONValue, _ := json.Marshal(itemDefValue)

@@ -47,8 +47,8 @@ func (def PromptDef) Item(s Session) Item {
 	}
 
 	//store as new item in the session with uuid
-	id := "_item_prompt_" + uuid.New().String()
-	s.Set(id, def)
+	id := "item_prompt_" + uuid.New().String()
+	s.Set(id, map[string]interface{}{"prompt": def})
 
 	//return item that can be used locally, but it will be recreated
 	//later from session data if control is first passed back to the user

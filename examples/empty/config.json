@@ -14,5 +14,8 @@
         "nats":{
             "domain":"sos_credit"
         }
+    },
+    "sessions":{
+        
     }
 }

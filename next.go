@@ -42,26 +42,22 @@ func (nid *NextItemsDef) UnmarshalJSON(value []byte) error {
 	//or
 	//    ["a", {"menu":{...}}]
 	//the objects will be created as non-reuasable items using id=uuid()
-	log.Debugf("JSON Unmarshal: %s", string(value))
-
 	list := []interface{}{}
 	if err := json.Unmarshal(value, &list); err != nil {
 		return errors.Wrapf(err, "cannot unmarshal list of items")
 	}
-	log.Debugf("got %d next items", len(list))
 
 	nid.list = []NextItem{}
 	for index, nextDef := range list {
-		log.Debugf("  next[%d]: (%T)%v", index, nextDef, nextDef)
 		switch nextDef := nextDef.(type) {
 		case string:
 			//expect this to be an item ID that will later be resolved
 			if nextDef == "" {
 				return errors.Errorf("next[%d] is empty", index)
 			}
-			if !snakeCaseRegex.MatchString(nextDef) {
-				return errors.Errorf("next[%d]:\"%s\" is not snake_case", index, nextDef)
-			}
+			// if !snakeCaseRegex.MatchString(nextDef) {
+			// 	return errors.Errorf("next[%d]:\"%s\" is not snake_case", index, nextDef)
+			// }
 			nid.list = append(nid.list, NextItem{ID: nextDef, Item: nil})
 		case map[string]interface{}:
 			if len(nextDef) != 1 {
@@ -82,7 +78,11 @@ func (nid *NextItemsDef) UnmarshalJSON(value []byte) error {
 }
 
 func (nid NextItemsDef) MarshalJSON() ([]byte, error) {
-	return nil, errors.Errorf("NYI")
+	idList := []string{}
+	for _, nextItem := range nid.list {
+		idList = append(idList, nextItem.ID)
+	}
+	return json.Marshal(idList)
 }
 
 //NextItem stores at least the ID and when defined/resolved, also the item

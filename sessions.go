@@ -62,13 +62,13 @@ func (ss *inMemorySessions) Get(id string) (Session, error) {
 	defer ss.Unlock()
 	if ims, ok := ss.sessionByID[id]; ok {
 		s := NewSession(ss, id, ims.startTime, ims.lastTime, ims.data)
-		log.Debugf("retrieved ims(%s): %+v", id, ims.data)
+		//log.Debugf("retrieved ims(%s): %+v", id, ims.data)
 		return s, nil
 	}
-	log.Debugf("session(%s) not found. %d sessions exists:", id, len(ss.sessionByID))
-	for id := range ss.sessionByID {
-		log.Debugf("  %s", id)
-	}
+	// log.Debugf("session(%s) not found. %d sessions exists:", id, len(ss.sessionByID))
+	// for id := range ss.sessionByID {
+	// 	log.Debugf("  %s", id)
+	// }
 	return nil, nil //session not found, not an error, just nil value, err is for real errors when Get fail and session could actually exist
 }
 
@@ -94,14 +94,14 @@ func (ss *inMemorySessions) Sync(id string, set map[string]interface{}, del map[
 	}
 	for name := range del {
 		delete(ims.data, name)
-		log.Debugf("  ims[%s] deleted", name)
+		//log.Debugf("  ims[%s] deleted", name)
 	}
 	for name, value := range set {
 		ims.data[name] = value
-		log.Debugf("  ims[%s]=%v", name, value)
+		//log.Debugf("  ims[%s]=%v", name, value)
 	}
 	ims.lastTime = t
 	ss.sessionByID[id] = ims
-	log.Debugf("synced ims(%s): %+v", id, ims.data)
+	//log.Debugf("synced ims(%s): %+v", id, ims.data)
 	return nil
 }

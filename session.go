@@ -38,7 +38,6 @@ func NewSession(ss Sessions, id string, t0, t1 time.Time, data map[string]interf
 	if s.namesToSet == nil {
 		s.namesToSet = map[string]interface{}{}
 	}
-	log.Debugf("Local Session(%s): %+v", s.id, s.data)
 	return s
 }
 
@@ -74,6 +73,10 @@ func (s *session) Set(name string, value interface{}) {
 	}
 	s.data[name] = value
 	s.namesToSet[name] = value
+	l := []string{}
+	for n := range s.namesToSet {
+		l = append(l, n)
+	}
 	delete(s.namesToDel, name) //make sure its not deleted anymore
 }
 
@@ -81,9 +84,17 @@ func (s *session) Del(name string) {
 	delete(s.data, name)
 	delete(s.namesToSet, name)
 	s.namesToDel[name] = true
+	l := []string{}
+	for n := range s.namesToSet {
+		l = append(l, n)
+	}
 }
 
 func (s *session) Sync() error {
+	l := []string{}
+	for n := range s.namesToSet {
+		l = append(l, n)
+	}
 	s.sessions.Sync(s.id, s.namesToSet, s.namesToDel)
 	s.namesToSet = map[string]interface{}{}
 	s.namesToDel = map[string]bool{}

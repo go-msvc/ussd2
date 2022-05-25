@@ -39,8 +39,8 @@ func (def FinalDef) Item(s Session) Item {
 		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.Item(s) //still return an item so the call is easy to use
 	}
 	//store as new item in the session with uuid
-	id := "_item_final_" + uuid.New().String()
-	s.Set(id, def)
+	id := "item_final_" + uuid.New().String()
+	s.Set(id, map[string]interface{}{"final": def})
 
 	//return final that can be used locally, but it will be recreated
 	//later from session data if control is first passed back to the user

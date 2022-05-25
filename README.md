@@ -1,29 +1,14 @@
 # DONE #
 - examples/empty
-    - runs on console/nats/rest
-    - only first menu item
+    - runs on console/nats/rest (selected in config)
+    - demo sos_credit menu item 1..3 with static and dynamic content
 # TODO #
-- Implemented def for most items and dynamic/static definitions
-	Registered item definitions and names
-	Busy load static items from a file and mix with functions defined in code
-	and resolve all defined items and still allow dynanmic menus... should work kind of already
-	then see if can run in two instances and continue in other instance with dynamic menu
+	- get external sessions to demonstrate scaling with NATS and REST
 
-CURRENT CHALLENGE: Changed ItemDef to have Item() and Static(Item)
-	Consider making it one and let caller/pre-post startup determine if static/dynamic...
-	need session to be dynamic, see if can wrap e.g. Dyn(s, def.Item())
-		and also do static then with Static(id, def.Item())
-	Then there is only one constructor...
-	Must ID be inside/outside the item?
-	Should Item be Item{ID:... Def:menuItem{title, options}}?
-	Or still menuItem{id:..., def:{title, options}}
-
-	also need to complete and test dynamic prompts and language code in sesison
-
-
+- complete and test dynamic prompts and language code in session
 - Do input validation and retry prompt
 - Do Set with expressions
-- Text with translation and substitution
+- Captions with translation and substitution
 - Custom value types in sessions with validation built in and params e.g. min/max per prompt?
 - Check error handling - what goes to user and what is logged
 - Make service calls on NATS/HTTP/Mongo/SQL/...
@@ -31,14 +16,14 @@ CURRENT CHALLENGE: Changed ItemDef to have Item() and Static(Item)
 - Define service test cases + service call stubs
 - Configure external sessions (default in memory)
 - Service logic based on service results/session data -> which then change next items
-- Dynamic enable/disable of menu items
-- Dynamic menus
+- Dynamic enable/disable/show/hide of menu items
 - Dynamic prompts
-- Back option
+- Back option and crumbs to continue going back
 - Paging in USSD when data["maxl"] is defined (include encoding)
 - General service documentation
 - Build service container for NATS or REST or both with ENV to select (container excl console)
 - Multi-language options + language preference, Text vs String
+- Determine test coverage
 
 
 

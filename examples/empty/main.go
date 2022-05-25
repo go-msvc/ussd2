@@ -8,6 +8,7 @@ import (
 
 	ussd "github.com/jansemmelink/ussd2"
 	_ "github.com/jansemmelink/ussd2/ms/console"
+	sessions "github.com/jansemmelink/ussd2/rest-sessions/client"
 	"github.com/jansemmelink/utils2/errors"
 	"github.com/jansemmelink/utils2/logger"
 	_ "github.com/jansemmelink/utils2/ms/nats"
@@ -56,6 +57,10 @@ func main() {
 
 	//todo: before menu is displayed, ensure we got msisdn, needed to send SMS...
 	//and possible load some user account details...
+
+	//use external HTTP REST service for sessions
+	s := sessions.New("http://localhost:8100")
+	ussd.SetSessions(s)
 
 	//create and run the USSD service:
 	svc := ussd.NewService(startMenu)
@@ -145,7 +150,7 @@ func execSosGetOffers(ctx context.Context) ([]ussd.Item, error) {
 	menuDef = menuDef.With(ussd.CaptionDef{"fr": "Back"},
 		startMenu,
 	)
-	log.Debugf("Defined offers menu: %+v", menuDef)
+	//log.Debugf("Defined offers menu: %+v", menuDef)
 	return []ussd.Item{menuDef.Item(s)}, nil
 }
 

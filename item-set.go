@@ -49,8 +49,8 @@ func (def SetDef) Item(s Session) Item {
 		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.Item(s) //still return an item so the call is easy to use
 	}
 	//store as new item in the session with uuid
-	id := "_item_set_" + uuid.New().String()
-	s.Set(id, def)
+	id := "item_set_" + uuid.New().String()
+	s.Set(id, map[string]interface{}{"set": def})
 
 	//return set that can be used locally, but it will be recreated
 	//later from session data if control is first passed back to the user

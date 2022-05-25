@@ -2,11 +2,11 @@ module github.com/jansemmelink/ussd2
 
 go 1.17
 
-replace (
-	github.com/jansemmelink/utils2 => ../utils2
-)
+replace github.com/jansemmelink/utils2 => ../utils2
 
 require github.com/jansemmelink/utils2 v0.0.0
+
+require github.com/gorilla/mux v1.8.0 // indirect
 
 require (
 	github.com/google/uuid v1.3.0

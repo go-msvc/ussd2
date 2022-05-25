@@ -6,16 +6,16 @@ import (
 	"net/http"
 	"time"
 
-	"bitbucket.org/vservices/ms-vservices-ussd/ussd"
-	"bitbucket.org/vservices/utils/v4/errors"
-	"bitbucket.org/vservices/utils/v4/logger"
+	ussd "github.com/jansemmelink/ussd2"
+	"github.com/jansemmelink/utils2/errors"
+	"github.com/jansemmelink/utils2/logger"
 )
 
 func New(addr string) ussd.Sessions {
 	return httpSessions{addr: addr}
 }
 
-var log = logger.NewLogger()
+var log = logger.New().WithLevel(logger.LevelDebug)
 
 //implements ussd.Sessions
 type httpSessions struct {
@@ -116,10 +116,15 @@ func (c httpSessions) Sync(id string, set map[string]interface{}, del map[string
 		Data: set,
 	}
 	for n := range del {
+		log.Debugf("  del[%s]=(%T)%v", n, hs.Data[n])
 		hs.Data[n] = nil
 	}
+
 	buf := bytes.NewBuffer(nil)
-	json.NewEncoder(buf).Encode(hs)
+	if err := json.NewEncoder(buf).Encode(hs); err != nil {
+		return errors.Wrapf(err, "encoder failed")
+	}
+
 	httpReq, _ := http.NewRequest(
 		http.MethodPut,
 		c.addr+"/session/"+id,
@@ -130,10 +135,11 @@ func (c httpSessions) Sync(id string, set map[string]interface{}, del map[string
 	}
 	switch httpRes.StatusCode {
 	case http.StatusOK:
-		if err := json.NewDecoder(httpRes.Body).Decode(&hs); err != nil {
+		hr := httpSession{}
+		if err := json.NewDecoder(httpRes.Body).Decode(&hr); err != nil {
 			return errors.Wrapf(err, "failed to decode HTTP session")
 		}
-		log.Debugf("Synced: %+v", hs)
+		//log.Debugf("Synced: %+v", hr)
 		return nil
 	default:
 		return errors.Errorf("failed to sync session: %+v", httpRes.Status)

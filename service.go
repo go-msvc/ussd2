@@ -2,6 +2,7 @@ package ussd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jansemmelink/utils2/errors"
@@ -84,7 +85,6 @@ func (svc service) handleContinue(ctx context.Context, req ContinueRequest) (*Re
 		return nil, errors.Errorf("not an existing session(%s)", req.SessionID)
 	}
 
-	log.Debugf("Got existing session(%s)", s.ID())
 	var item Item
 	if id, ok := s.Get("item_id").(string); !ok {
 		return nil, errors.Errorf("item_id not defined for existing session(%s)", req.SessionID)
@@ -101,19 +101,24 @@ func (svc service) handleContinue(ctx context.Context, req ContinueRequest) (*Re
 func (svc service) Run(s Session, item Item, input string) (*Response, error) {
 	//rebuild list of next items from session data
 	nextItems := []Item{}
-	if nextItemIds, ok := s.Get("next_item_ids").([]string); ok {
-		for _, id := range nextItemIds {
-			if nextItem, ok := staticItemByID[id]; !ok {
-				return nil, errors.Errorf("unknown next item_id(%s)", id)
-			} else {
-				nextItems = append(nextItems, nextItem)
+	nextItemIds, ok := s.Get("next_item_ids").([]string)
+	if !ok {
+		nextItemIds = []string{}
+		list, ok := s.Get("next_item_ids").([]interface{})
+		if ok {
+			for _, id := range list {
+				nextItemIds = append(nextItemIds, fmt.Sprintf("%v", id))
 			}
 		}
 	}
-	log.Debugf("Run: item(%s) and %d next items", item.ID(), len(nextItems))
-	for _, i := range nextItems {
-		log.Debugf("   item(%s): %T", i.ID(), i)
+	for _, id := range nextItemIds {
+		if nextItem, ok := staticItemByID[id]; !ok {
+			return nil, errors.Errorf("unknown next item_id(%s)", id)
+		} else {
+			nextItems = append(nextItems, nextItem)
+		}
 	}
+	log.Debugf("Run: item(%s) and %d next items", item.ID(), len(nextItems))
 
 	defer func() {
 		if s != nil {
@@ -156,9 +161,8 @@ func (svc service) Run(s Session, item Item, input string) (*Response, error) {
 	}
 
 	for item != nil {
-		log.Infof("LOOP Item(%s):%T ...", item.ID(), item)
 		if svcItem, ok := item.(ItemSvc); ok {
-			log.Debugf("Service item...")
+			log.Debugf("Service item(%s):%T ...", item.ID(), item)
 			moreNextItems, err := svcItem.Exec(ctx)
 			if err != nil {
 				return nil, errors.Wrapf(err, "service item(%s:%T).Exec() failed", item, item)

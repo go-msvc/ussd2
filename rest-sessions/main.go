@@ -2,14 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
-	"bitbucket.org/vservices/utils/v4/logger"
 	"github.com/gorilla/mux"
+	"github.com/jansemmelink/utils2/logger"
 )
 
-var log = logger.NewLogger()
+var log = logger.New().WithLevel(logger.LevelDebug)
 
 func main() {
 	mux := mux.NewRouter()
@@ -110,7 +111,11 @@ func handleUpdSession(httpRes http.ResponseWriter, httpReq *http.Request) {
 	}
 
 	var upd session
-	json.NewDecoder(httpReq.Body).Decode(&upd)
+	if err := json.NewDecoder(httpReq.Body).Decode(&upd); err != nil {
+		log.Errorf("UPD decode error: %+v", err)
+		http.Error(httpRes, fmt.Sprintf("failed to decode: %+v", err), http.StatusBadRequest)
+		return
+	}
 	if upd.ID != "" && upd.ID != id {
 		http.Error(httpRes, "id in URL and body does not match", http.StatusBadRequest)
 		return
