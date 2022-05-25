@@ -103,7 +103,7 @@ func (svc service) Run(s Session, item Item, input string) (*Response, error) {
 	nextItems := []Item{}
 	if nextItemIds, ok := s.Get("next_item_ids").([]string); ok {
 		for _, id := range nextItemIds {
-			if nextItem, ok := itemByID[id]; !ok {
+			if nextItem, ok := staticItemByID[id]; !ok {
 				return nil, errors.Errorf("unknown next item_id(%s)", id)
 			} else {
 				nextItems = append(nextItems, nextItem)

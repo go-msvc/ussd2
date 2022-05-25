@@ -43,10 +43,18 @@ func (def MenuOptionDef) Validate() error {
 	if err := def.Caption.Validate(); err != nil {
 		return errors.Wrapf(err, "invalid caption")
 	}
-	if len(def.NextItems) < 1 {
+	if len(def.NextItems.list) < 1 {
 		return errors.Errorf("missing/empty next list")
 	}
 	return nil
+}
+
+func (def MenuDef) StaticItem(id string) Item {
+	if err := def.Validate(); err != nil {
+		log.Errorf("invalid def (%T)%+v: %+v", def, def, err)
+		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.StaticItem(id) //still return an item so the call is easy to use
+	}
+	return &ussdMenu{id: id, def: def}
 }
 
 func (def MenuDef) Item(s Session) Item {
@@ -81,10 +89,10 @@ func DynMenuDef(title CaptionDef) MenuDef {
 func (def MenuDef) With(caption CaptionDef, nextItems ...Item) MenuDef {
 	optionDef := MenuOptionDef{
 		Caption:   caption,
-		NextItems: []*NextItem{},
+		NextItems: NextItemsDef{list: []NextItem{}},
 	}
 	for _, n := range nextItems {
-		optionDef.NextItems = append(optionDef.NextItems, &NextItem{ID: n.ID(), Item: n})
+		optionDef.NextItems.list = append(optionDef.NextItems.list, NextItem{ID: n.ID(), Item: n})
 	}
 	def.Options = append(def.Options, optionDef)
 	return def
@@ -107,7 +115,7 @@ func Menu(id string, title CaptionDef) *ussdMenu {
 			Options: []MenuOptionDef{},
 		},
 	}
-	itemByID[id] = m
+	staticItemByID[id] = m
 	return m
 }
 
@@ -123,10 +131,10 @@ func (m *ussdMenu) With(caption CaptionDef, nextItems ...Item) *ussdMenu {
 	}
 	optionDef := MenuOptionDef{
 		Caption:   caption,
-		NextItems: []*NextItem{}, //will be executed in series until the last one, expecting text="" and next="" from others
+		NextItems: NextItemsDef{list: []NextItem{}}, //will be executed in series until the last one, expecting text="" and next="" from others
 	}
 	for _, n := range nextItems {
-		optionDef.NextItems = append(optionDef.NextItems, &NextItem{ID: n.ID(), Item: n})
+		optionDef.NextItems.list = append(optionDef.NextItems.list, NextItem{ID: n.ID(), Item: n})
 	}
 	m.def.Options = append(m.def.Options, optionDef)
 	return m
@@ -153,7 +161,7 @@ func (m *ussdMenu) Process(ctx context.Context, input string) ([]Item, error) {
 	s := ctx.Value(CtxSession{}).(Session)
 	if i64, err := strconv.ParseInt(input, 10, 64); err == nil && i64 >= 1 && int(i64) <= len(m.def.Options) {
 		nextItems := m.def.Options[i64-1].NextItems
-		if len(nextItems) == 0 {
+		if len(nextItems.list) == 0 {
 			log.Errorf("menu(%s) input(%s): this item is not yet implemented", m.id, input)
 			return nil, errors.Errorf("not yet implemented")
 		}

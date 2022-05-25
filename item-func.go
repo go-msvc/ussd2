@@ -19,7 +19,7 @@ func Func(id string, fnc func(context.Context) ([]Item, error)) ItemSvc {
 		id:  id,
 		fnc: fnc,
 	}
-	itemByID[id] = f
+	staticItemByID[id] = f
 	return f
 }
 

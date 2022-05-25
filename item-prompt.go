@@ -33,6 +33,14 @@ func (def PromptDef) Validate() error {
 	return nil
 }
 
+func (def PromptDef) StaticItem(id string) Item {
+	if err := def.Validate(); err != nil {
+		log.Errorf("invalid def (%T)%+v: %+v", def, def, err)
+		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.StaticItem(id) //still return an item so the call is easy to use
+	}
+	return &ussdPrompt{id: id, def: def}
+}
+
 func (def PromptDef) Item(s Session) Item {
 	if s == nil {
 		panic("session is nil")
@@ -75,7 +83,7 @@ func Prompt(id string, caption CaptionDef, name string) *ussdPrompt {
 		id:  id,
 		def: PromptDef{Caption: caption, Name: name},
 	}
-	itemByID[id] = p
+	staticItemByID[id] = p
 	return p
 }
 

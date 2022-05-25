@@ -22,6 +22,14 @@ func (def FinalDef) Validate() error {
 	return nil
 }
 
+func (def FinalDef) StaticItem(id string) Item {
+	if err := def.Validate(); err != nil {
+		log.Errorf("invalid def (%T)%+v: %+v", def, def, err)
+		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.StaticItem(id) //still return an item so the call is easy to use
+	}
+	return ussdFinal{id: id, def: def}
+}
+
 func (def FinalDef) Item(s Session) Item {
 	if s == nil {
 		panic("session is nil")
@@ -51,7 +59,7 @@ func Final(id string, caption CaptionDef) *ussdFinal {
 	if id == "" {
 		id = uuid.New().String()
 	} else {
-		if existingItem, ok := itemByID[id]; ok {
+		if existingItem, ok := staticItemByID[id]; ok {
 			panic(errors.Errorf("Final(%s) redefines %T(%s)", id, existingItem, id))
 		}
 	}
@@ -59,7 +67,7 @@ func Final(id string, caption CaptionDef) *ussdFinal {
 		id:  id,
 		def: def,
 	}
-	itemByID[id] = f
+	staticItemByID[id] = f
 	return f
 }
 

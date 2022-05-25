@@ -3,22 +3,25 @@ package ussd
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/jansemmelink/utils2/errors"
 )
 
-type NextItemsDef []*NextItem
+type NextItemsDef struct {
+	list []NextItem
+}
 
 //returns error if some IDs cannot be resolved
 func (nid NextItemsDef) Items(s Session) ([]Item, error) {
-	items := make([]Item, len(nid))
-	for index, nextItem := range nid {
+	items := make([]Item, len(nid.list))
+	for index, nextItem := range nid.list {
 		if nextItem.Item == nil {
 			var ok bool
 			nextItem.Item, ok = ItemByID(nextItem.ID, s)
 			if !ok {
 				return nil, errors.Errorf("next[%d]=\"%s\" not found", index, nextItem.ID)
 			}
-			nid[index] = nextItem //now resolved
+			nid.list[index] = nextItem //now resolved
 		}
 		items[index] = nextItem.Item
 	}
@@ -26,8 +29,8 @@ func (nid NextItemsDef) Items(s Session) ([]Item, error) {
 }
 
 func (nid NextItemsDef) Ids() []string {
-	ids := make([]string, len(nid))
-	for i, n := range nid {
+	ids := make([]string, len(nid.list))
+	for i, n := range nid.list {
 		ids[i] = n.ID
 	}
 	return ids
@@ -47,6 +50,7 @@ func (nid *NextItemsDef) UnmarshalJSON(value []byte) error {
 	}
 	log.Debugf("got %d next items", len(list))
 
+	nid.list = []NextItem{}
 	for index, nextDef := range list {
 		log.Debugf("  next[%d]: (%T)%v", index, nextDef, nextDef)
 		switch nextDef := nextDef.(type) {
@@ -58,9 +62,18 @@ func (nid *NextItemsDef) UnmarshalJSON(value []byte) error {
 			if !snakeCaseRegex.MatchString(nextDef) {
 				return errors.Errorf("next[%d]:\"%s\" is not snake_case", index, nextDef)
 			}
-			*nid = append(*nid, &NextItem{ID: nextDef})
+			nid.list = append(nid.list, NextItem{ID: nextDef, Item: nil})
 		case map[string]interface{}:
-			return errors.Errorf("next[%d]:%T not yet implemented parsing from obj def ...", index, nextDef)
+			if len(nextDef) != 1 {
+				return errors.Errorf("next[%d]:%+v must have one element, not %d", index, nextDef, len(nextDef))
+			}
+			id := uuid.New().String() //only used here, so id not significant
+			item, err := makeItem(id, nextDef)
+			if err != nil {
+				return errors.Wrapf(err, "failed to make item(%s)", id)
+			}
+			staticItemByID[id] = item
+			nid.list = append(nid.list, NextItem{ID: id, Item: item})
 		default:
 			return errors.Errorf("cannot unmarshal next item[%d] from %T", index, nextDef)
 		}

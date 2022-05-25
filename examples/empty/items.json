@@ -1,5 +1,5 @@
 {
-    "main":{
+    "start":{
         "menu":{
             "title":{"fr":"SOS Crédit"},
             "options":[
@@ -27,8 +27,8 @@
         "menu":{
             "title":{"fr":"Montant", "en":"Select Amount"},
             "options":[
-                {"caption":{"fr":"200 Ar"}, "next":["set_amount_200"]},
-                {"caption":{"fr":"500 Ar"}, "next":["set_amount_500"]},
+                {"caption":{"fr":"200 Ar"}, "next":[{"set":{"name":"amount","value":"200"}}]},
+                {"caption":{"fr":"500 Ar"}, "next":[{"set":{"name":"amount","value":"500"}}]},
                 {"caption":{"fr":"1000 Ar"}, "next":[{"set":{"name":"amount","value":"1000"}}]}
             ]
         }

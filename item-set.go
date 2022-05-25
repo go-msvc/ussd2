@@ -31,6 +31,14 @@ func (def SetDef) Validate() error {
 	return nil
 }
 
+func (def SetDef) StaticItem(id string) Item {
+	if err := def.Validate(); err != nil {
+		log.Errorf("invalid def (%T)%+v: %+v", def, def, err)
+		return FinalDef{Caption: CaptionDef{"en": "Service unavailable"}}.StaticItem(id) //still return an item so the call is easy to use
+	}
+	return &ussdSet{id: id, def: def}
+}
+
 //creates a dynamic item in the session
 func (def SetDef) Item(s Session) Item {
 	if s == nil {
@@ -61,7 +69,7 @@ func Set(id string, name string, value interface{}) Item {
 	if id == "" {
 		id = uuid.New().String()
 	} else {
-		if existingItem, ok := itemByID[id]; ok {
+		if existingItem, ok := staticItemByID[id]; ok {
 			panic(errors.Errorf("Set(%s) redefines %T(%s)", id, existingItem, id))
 		}
 	}
@@ -69,7 +77,7 @@ func Set(id string, name string, value interface{}) Item {
 		id:  id,
 		def: def,
 	}
-	itemByID[id] = s
+	staticItemByID[id] = s
 	return s
 }
 

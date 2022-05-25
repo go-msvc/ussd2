@@ -43,7 +43,7 @@ type ItemUsrPrompt interface {
 //where the value is session specific and stored in the session for each set item
 //
 //IMPORTANT: dynamic items are not stored in staticItemByID[]!!!
-//           itemByID does not change after started is set to true!
+//           staticItemByID does not change after started is set to true!
 var (
 	staticItemByID = map[string]Item{}
 	started        = false
@@ -68,7 +68,6 @@ func ItemByID(id string, s Session) (Item, bool) {
 		log.Errorf("session(%s) = (%T)%+v != ItemDef", id, defValue, defValue)
 		return nil, false
 	}
-
 	return itemDef.Item(s), true
 }
 
@@ -88,39 +87,46 @@ func LoadItems(fn string) error {
 		if len(itemDefObj) != 1 {
 			return errors.Errorf("item(%s) has %d entries instead of 1 of %s", id, len(itemDefObj), strings.Join(registeredItemDefNames, "|"))
 		}
-		var itemDefName string
-		var itemDefValue interface{}
-		for itemDefName, itemDefValue = range itemDefObj {
-			break //only one item
+		item, err := makeItem(id, itemDefObj)
+		if err != nil {
+			return errors.Wrapf(err, "failed to make item")
 		}
-
-		log.Debugf("item(%s) is \"%s\": %+v", id, itemDefName, itemDefValue)
-		itemDefTmpl, ok := itemDefByName[itemDefName]
-		if !ok {
-			return errors.Errorf("file(%s).item(%s) has unknown type {\"%s\":{...}}", fn, id, itemDefName)
-		}
-		log.Debugf("parsing into %T...", itemDefTmpl)
-
-		itemDefValuePtr := reflect.New(reflect.TypeOf(itemDefTmpl))
-		itemDefJSONValue, _ := json.Marshal(itemDefValue)
-		if err := json.Unmarshal(itemDefJSONValue, itemDefValuePtr.Interface()); err != nil {
-			return errors.Wrapf(err, "cannot unmarshal definition of item(%s) into %T", id, itemDefTmpl)
-		}
-		if validator, ok := itemDefValuePtr.Interface().(config.Validator); ok {
-			if err := validator.Validate(); err != nil {
-				return errors.Wrapf(err, "invalid definition for item(%s)", id)
-			}
-		}
-		itemDef, ok := itemDefValuePtr.Elem().Interface().(ItemDef)
-		if !ok {
-			return errors.Errorf("wierd! %T is not an item def - should be prevented by registerItemDef()!", itemDefValuePtr.Elem().Interface())
-		}
-		item := itemDef.StaticItem(id)
-		if existingItem, ok := itemByID[id]; ok {
+		if existingItem, ok := staticItemByID[id]; ok {
 			return errors.Errorf("file %s defines item(%s):%T already defined as item(%s):%T", fn, id, item, id, existingItem)
 		}
-		itemByID[id] = item
+		staticItemByID[id] = item
 		log.Debugf("File(%s): item(%s):%T", fn, id, item)
 	}
 	return nil
+}
+
+func makeItem(id string, itemDefObj map[string]interface{}) (Item, error) {
+	var itemDefName string
+	var itemDefValue interface{}
+	for itemDefName, itemDefValue = range itemDefObj {
+		break //only one item
+	}
+
+	log.Debugf("item(%s) is \"%s\": %+v", id, itemDefName, itemDefValue)
+	itemDefTmpl, ok := itemDefByName[itemDefName]
+	if !ok {
+		return nil, errors.Errorf("item(%s) has unknown type {\"%s\":{...}}", id, itemDefName)
+	}
+	log.Debugf("parsing into %T...", itemDefTmpl)
+
+	itemDefValuePtr := reflect.New(reflect.TypeOf(itemDefTmpl))
+	itemDefJSONValue, _ := json.Marshal(itemDefValue)
+	if err := json.Unmarshal(itemDefJSONValue, itemDefValuePtr.Interface()); err != nil {
+		return nil, errors.Wrapf(err, "cannot unmarshal definition of item(%s) into %T", id, itemDefTmpl)
+	}
+	if validator, ok := itemDefValuePtr.Interface().(config.Validator); ok {
+		if err := validator.Validate(); err != nil {
+			return nil, errors.Wrapf(err, "invalid definition for item(%s)", id)
+		}
+	}
+	itemDef, ok := itemDefValuePtr.Elem().Interface().(ItemDef)
+	if !ok {
+		return nil, errors.Errorf("wierd! %T is not an item def - should be prevented by registerItemDef()!", itemDefValuePtr.Elem().Interface())
+	}
+	return itemDef.StaticItem(id), nil
 }
