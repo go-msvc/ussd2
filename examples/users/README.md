@@ -6,6 +6,7 @@ It demonstrates how:
 - profile can be loaded before the main menu is displayed
 - profile values can be updated and stored and show in the next session
 - generic prompts are used to change both profile values
+- language switch can be used
 
 ```
 ==========[ START      ]==========     (total=  0.000s                  now=08:07:36.938)

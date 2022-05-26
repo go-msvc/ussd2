@@ -1,26 +1,27 @@
 {
     "main":{
         "menu":{
-            "title":{"en":"Profile"},
+            "title":{"en":"Profile", "af":"Profiel"},
             "options":[
-                {"caption":{"en":"Name: {{name}}"}, "next":[{"set":{"name":"field_name", "value":"name"}}, {"set":{"name":"old_value", "value":"{{name}}"}}, "ask_to_change"]},
-                {"caption":{"en":"Dob: {{dob}}"},   "next":[{"set":{"name":"field_name", "value":"dob"}},  {"set":{"name":"old_value", "value":"{{dob}}"}},  "ask_to_change"]},
-                {"caption":{"en":"Exit"},           "next":[{"final":{"caption":{"en":"Goodbye."}}}]}
+                {"caption":{"en":"Name:          {{name}}", "af":"Naam:           {{name}}"}, "next":[{"set":{"name":"field_name", "value":"name"}}, {"set":{"name":"old_value", "value":"{{name}}"}}, "ask_to_change"]},
+                {"caption":{"en":"Date of birth: {{dob}}",  "af":"Geboorte datum: {{dob}}" }, "next":[{"set":{"name":"field_name", "value":"dob"}},  {"set":{"name":"old_value", "value":"{{dob}}"}},  "ask_to_change"]},
+                {"caption":{"en":"Afrikaans",               "af":"English"                 }, "next":["switch_lang"]},
+                {"caption":{"en":"Exit",                    "af":"Eindig"                  }, "next":[{"final":{"caption":{"en":"Goodbye.", "af":"Totsiens"}}}]}
             ]
         }        
     },
     "ask_to_change":{
         "menu":{
-            "title":{"en":"Do you want to change your {{field_name}}?"},
+            "title":{"en":"Do you want to change your {{field_name}}?", "af":"Wil jy jou {{field_name}} verander?"},
             "options":[
-                {"caption":{"en":"Yes please"}, "next":["ask_new_value", "set_new_value"]},
-                {"caption":{"en":"No, back to menu"}, "next":["main"]}
+                {"caption":{"en":"Yes please",       "af":"Ja, asseblief"  }, "next":["ask_new_value", "set_new_value"]},
+                {"caption":{"en":"No, back to menu", "af":"Nee, gaan terug"}, "next":["main"]}
             ]
         }
     },
     "ask_new_value":{
         "prompt":{
-            "caption":{"en":"Enter new value for your {{field_name}}: "},
+            "caption":{"en":"Enter new value for your {{field_name}}: ", "af":"Wat is die nuwe waarde vir jou {{field_name}}? "},
             "name":"new_value"
         }
     }

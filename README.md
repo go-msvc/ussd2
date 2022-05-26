@@ -1,10 +1,15 @@
 # DONE #
-- examples/empty
+- examples:
     - runs on console/nats/rest (selected in config)
     - demo sos_credit menu item 1..3 with static and dynamic content
-# TODO #
-	- get external sessions to demonstrate scaling with NATS and REST
+	- demo users to change profile settings
+	- examples uses external sessions to run scalable instances
+	- demonstrates dynamic prompts
+	- demonstrates service calls before menus and after selections
+	- text substitution from session data
+	- language switch (examples/users)
 
+# TODO #
 - complete and test dynamic prompts and language code in session
 - Do input validation and retry prompt
 - Do Set with expressions
@@ -24,7 +29,7 @@
 - Build service container for NATS or REST or both with ENV to select (container excl console)
 - Multi-language options + language preference, Text vs String
 - Determine test coverage
-
+- Detect and report missing translations
 
 
 	//todo:

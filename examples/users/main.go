@@ -30,6 +30,7 @@ func main() {
 	}
 	start := ussd.Func("start", start)
 	ussd.Func("set_new_value", setNewValue)
+	ussd.Func("switch_lang", switchLang)
 
 	//todo: before menu is displayed, ensure we got msisdn, needed to send SMS...
 	//and possible load some user account details...
@@ -48,10 +49,11 @@ func main() {
 type Profile struct {
 	Name string
 	Dob  string
+	Lang string
 }
 
 var profileByMsisdn = map[string]Profile{
-	"27821234567": {Name: "Jan", Dob: "1973-11-18"},
+	"27821234567": {Name: "Jan", Dob: "1973-11-18", Lang: "en"},
 }
 
 func start(ctx context.Context) ([]ussd.Item, error) {
@@ -61,6 +63,7 @@ func start(ctx context.Context) ([]ussd.Item, error) {
 		return []ussd.Item{
 			ussd.FinalDef{Caption: ussd.CaptionDef{
 				"en": "Invalid msisdn({{msisdn}})",
+				"af": "Ongeldinge msisdn({{msisdn}})",
 			}}.Item(s),
 		}, nil
 	}
@@ -70,6 +73,7 @@ func start(ctx context.Context) ([]ussd.Item, error) {
 		return []ussd.Item{
 			ussd.FinalDef{Caption: ussd.CaptionDef{
 				"en": "Unknown msisdn({{msisdn}})",
+				"af": "Onbekende msisdn({{msisdn}})",
 			}}.Item(s),
 		}, nil
 	}
@@ -77,6 +81,7 @@ func start(ctx context.Context) ([]ussd.Item, error) {
 	log.Debugf("Loaded profile(%s):%+v", msisdn, profile)
 	s.Set("name", profile.Name)
 	s.Set("dob", profile.Dob)
+	s.Set("lang", profile.Lang)
 	return []ussd.Item{mainMenu}, nil
 }
 
@@ -94,6 +99,7 @@ func setNewValue(ctx context.Context) ([]ussd.Item, error) {
 		return []ussd.Item{
 			ussd.FinalDef{Caption: ussd.CaptionDef{
 				"en": "Unknown msisdn({{msisdn}})",
+				"af": "Onbekende msisdn({{msisdn}})",
 			}}.Item(s),
 		}, nil
 	}
@@ -110,11 +116,28 @@ func setNewValue(ctx context.Context) ([]ussd.Item, error) {
 	default:
 		return []ussd.Item{
 			ussd.FinalDef{Caption: ussd.CaptionDef{
-				"en": "Unknown field name({{f_name}})",
+				"en": "Unknown field name({{field_name}})",
+				"af": "Onbekende veld naam({{field_name}})",
 			}}.Item(s),
 		}, nil
 	}
 
+	profileByMsisdn[msisdn] = p
+	return []ussd.Item{mainMenu}, nil
+}
+
+func switchLang(ctx context.Context) ([]ussd.Item, error) {
+	s := ctx.Value(ussd.CtxSession{}).(ussd.Session)
+	msisdn, _ := s.Get("msisdn").(string)
+	p, _ := profileByMsisdn[msisdn]
+	switch p.Lang {
+	case "en":
+		p.Lang = "af"
+
+	case "af":
+		p.Lang = "en"
+	}
+	s.Set("lang", p.Lang)
 	profileByMsisdn[msisdn] = p
 	return []ussd.Item{mainMenu}, nil
 }
