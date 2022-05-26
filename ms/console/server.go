@@ -155,6 +155,15 @@ func (s server) Serve(svc ms.Service) error {
 				}),
 			})
 		} //for main loop
+
+		if exited {
+			break
+		}
+		fmt.Printf("\n\nPress <enter> to start again or <ctrl><C> to exit ...\n")
+		input := <-userInputChan
+		if input == "exit" {
+			break
+		}
 	} //for each USSD session
 
 	fmt.Printf("\n\n")

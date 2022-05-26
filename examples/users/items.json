@@ -1,0 +1,27 @@
+{
+    "main":{
+        "menu":{
+            "title":{"en":"Profile"},
+            "options":[
+                {"caption":{"en":"Name: {{name}}"}, "next":[{"set":{"name":"field_name", "value":"name"}}, {"set":{"name":"old_value", "value":"{{name}}"}}, "ask_to_change"]},
+                {"caption":{"en":"Dob: {{dob}}"},   "next":[{"set":{"name":"field_name", "value":"dob"}},  {"set":{"name":"old_value", "value":"{{dob}}"}},  "ask_to_change"]},
+                {"caption":{"en":"Exit"},           "next":[{"final":{"caption":{"en":"Goodbye."}}}]}
+            ]
+        }        
+    },
+    "ask_to_change":{
+        "menu":{
+            "title":{"en":"Do you want to change your {{field_name}}?"},
+            "options":[
+                {"caption":{"en":"Yes please"}, "next":["ask_new_value", "set_new_value"]},
+                {"caption":{"en":"No, back to menu"}, "next":["main"]}
+            ]
+        }
+    },
+    "ask_new_value":{
+        "prompt":{
+            "caption":{"en":"Enter new value for your {{field_name}}: "},
+            "name":"new_value"
+        }
+    }
+}

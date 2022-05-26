@@ -63,6 +63,10 @@ func (s session) Get(name string) interface{} {
 	if v, ok := s.data[name]; ok {
 		return v
 	}
+	// log.Debugf("Not found session[\"%s\"], but got %d other values:", name, len(s.data))
+	// for n, v := range s.data {
+	// 	log.Debugf("  session[\"%s\"] = (%T)%+v", n, v, v)
+	// }
 	return nil
 }
 

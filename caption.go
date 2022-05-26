@@ -1,6 +1,8 @@
 package ussd
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/jansemmelink/utils2/errors"
@@ -27,6 +29,10 @@ func (def CaptionDef) Validate() error {
 }
 
 func (def CaptionDef) Text(s Session) string {
+	if len(def) == 0 {
+		return ""
+	}
+
 	langCode := ""
 	if s != nil {
 		langCode, _ = s.Get("lang").(string)
@@ -34,10 +40,10 @@ func (def CaptionDef) Text(s Session) string {
 
 	//try to get current lang text (or default in langCode == "")
 	text, ok := def[langCode]
-	//if not defined and used a langCode, try default langCode == ""
-	if !ok && langCode != "" {
-		text, ok = def[""] //default
-	}
+	// //if not defined and used a langCode, try default langCode == ""
+	// if !ok && langCode != "" {
+	// 	text, ok = def[""] //default
+	// }
 	//if still not defined, and any lang is defined, use first randon one
 	if !ok && len(def) > 0 {
 		for _, text = range def {
@@ -46,8 +52,19 @@ func (def CaptionDef) Text(s Session) string {
 	}
 
 	//do substitution from session data
-	//todo: should be precompiled template-type thingy... ideally something faster than full template...
-	//...
+	return substitute(s, text)
+}
 
-	return text
+const doubleMoustachePattern = `\{\{[a-z]([a-z0-9_]*[a-z0-9])*\}\}`
+
+var doubleMoustacheRegex = regexp.MustCompile(doubleMoustachePattern)
+
+func substitute(s Session, text string) string {
+	// log.Debugf("substituting in \"%s\" ...", text)
+	return doubleMoustacheRegex.ReplaceAllStringFunc(text, func(name string) string {
+		name = name[2 : len(name)-2]
+		value := s.Get(name)
+		log.Debugf("replace(%s)=(%T)\"%v\"", name, value, value)
+		return fmt.Sprintf("%v", value)
+	})
 }

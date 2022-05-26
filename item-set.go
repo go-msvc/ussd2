@@ -92,7 +92,13 @@ func (set ussdSet) ID() string {
 
 func (set ussdSet) Exec(ctx context.Context) ([]Item, error) {
 	s := ctx.Value(CtxSession{}).(Session)
-	s.Set(set.def.Name, set.def.Value)
+
+	//do text substitution on string values
+	if strValue, ok := set.def.Value.(string); ok {
+		s.Set(set.def.Name, substitute(s, strValue))
+	} else {
+		s.Set(set.def.Name, set.def.Value)
+	}
 	return nil, nil
 }
 

@@ -40,7 +40,7 @@ func main() {
 	//other types of items can be defined in code and referenced from JSON too
 	//but this could also be defined in JSON file with:
 	//	"nyi":{"final":{"caption":{"fr":"Not yet implemented"}}}
-	ussd.Final("nyi", ussd.CaptionDef{"fr": "Not yet implemented"})
+	ussd.Final("nyi", ussd.CaptionDef{"fr": "Not yet implemented item({{item_id}})"})
 
 	if err := ussd.LoadItems("./items.json"); err != nil {
 		panic(errors.Errorf("failed to load items.json: %+v", err))

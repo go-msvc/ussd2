@@ -80,5 +80,6 @@ type ussdFinal struct {
 func (f ussdFinal) ID() string { return f.id }
 
 func (f ussdFinal) Render(ctx context.Context) string {
-	return f.def.Caption["fr"] //todo: use lang code for session
+	s := ctx.Value(CtxSession{}).(Session)
+	return f.def.Caption.Text(s)
 }
