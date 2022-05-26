@@ -14,10 +14,10 @@ import (
 
 var mainMenu ussd.Item
 
-var log = logger.New().WithLevel(logger.LevelDebug)
+var log = logger.New() //.WithLevel(logger.LevelDebug)
 
 func main() {
-	logger.SetGlobalLevel(logger.LevelDebug)
+	//logger.SetGlobalLevel(logger.LevelDebug)
 	if err := ussd.LoadItems("./items.json"); err != nil {
 		panic(errors.Errorf("failed to load items.json: %+v", err))
 	}
