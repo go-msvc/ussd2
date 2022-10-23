@@ -2,6 +2,7 @@ package ussd
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/jansemmelink/utils2/errors"
@@ -12,12 +13,18 @@ func init() {
 }
 
 type PromptDef struct {
-	Caption CaptionDef `json:"caption"`
-	Name    string     `json:"name"`
-	//validators []InputValidator???
+	Caption   CaptionDef `json:"caption"`
+	Name      string     `json:"name"`
+	Type      string     `json:"type" doc:"Type of value defaults to string. This determines validation"`
+	valueType reflect.Type
 }
 
-func (def PromptDef) Validate() error {
+var typeByName = map[string]reflect.Type{
+	"string": reflect.TypeOf(""),
+	"int":    reflect.TypeOf(int(0)),
+}
+
+func (def *PromptDef) Validate() error {
 	if err := def.Caption.Validate(); err != nil {
 		return errors.Wrapf(err, "invalid caption")
 	}
@@ -30,6 +37,16 @@ func (def PromptDef) Validate() error {
 	if def.Name[0] == '_' {
 		return errors.Errorf("name:\"%s\" may not start with '_'", def.Name) //reserved for dynamic items
 	}
+	if def.Type != "" {
+		t, ok := typeByName[def.Type]
+		if !ok {
+			return errors.Errorf("unknown type(%s)", def.Type)
+		}
+		def.valueType = t
+	} else {
+		def.valueType = typeByName["string"]
+	}
+
 	return nil
 }
 
@@ -61,14 +78,6 @@ type ussdPrompt struct {
 	def PromptDef
 }
 
-type InputValidator interface {
-	Validate(input string) error
-}
-
-// func DynPrompt(id string, def PromptDef) Item {
-// 	//todo...
-// }
-
 func Prompt(id string, caption CaptionDef, name string) *ussdPrompt {
 	if started {
 		panic(errors.Errorf("attempt to define static item Prompt(%s) after started", id))
@@ -96,15 +105,43 @@ func (p *ussdPrompt) Render(ctx context.Context) string {
 	return p.def.Caption.Text(s)
 }
 
+type Parser interface {
+	Parse(s string) UserError
+}
+
+func Type(name string, tmpl Parser) {
+	t := reflect.TypeOf(tmpl)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	typeByName[name] = t
+}
+
 func (p *ussdPrompt) Process(ctx context.Context, input string) ([]Item, error) {
 	s := ctx.Value(CtxSession{}).(Session)
-	// for _, v := range p.validators {
-	// 	if err := v.Validate(input); err != nil {
-	// 		return []Item{p}, err //repeat prompt with error message
-	// 	}
-	// }
-	//todo: optional validator + invalid message
-	s.Set(p.def.Name, input)
+
+	valuePtr := reflect.New(p.def.valueType)
+	if scanner, ok := valuePtr.Interface().(Parser); ok {
+		if err := scanner.Parse(input); err != nil {
+			//prefix the error to the prompt and repeat the prompt
+			def := p.def
+			for lang, promptText := range p.def.Caption {
+				def.Caption = CaptionDef{
+					lang: err.Error(lang) + "\n" + promptText, //todo: err.Error() must be able to translate then substitute or list untranslated format string
+				}
+			}
+			return []Item{&ussdPrompt{id: p.id, def: def}}, nil
+		}
+		v := valuePtr.Elem().Interface()
+
+		log.Debugf("Prompt(%s) stored %s=(%T)%+v", p.id, p.def.Name, v, v)
+		s.Set(p.def.Name, v)
+	} else {
+		log.Debugf("%T does not implement Parser", valuePtr.Interface())
+		log.Debugf("Prompt(%s) stored %s=(%T)%+v", p.id, p.def.Name, input, input)
+		s.Set(p.def.Name, input)
+	}
+
 	log.Debugf("Prompt(%s) stored %s=%s", p.id, p.def.Name, input)
 	return nil, nil
 }
